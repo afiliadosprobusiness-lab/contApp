@@ -211,7 +211,7 @@ const DashboardLayout = () => {
               </span>
               <span className="text-muted-foreground">Sincroniza automaticamente tus comprobantes con el Plan PRO.</span>
               <Link to="/dashboard/plan" className="text-accent font-semibold hover:underline ml-auto shrink-0">
-                Ver Planes ->
+                Ver Planes
               </Link>
             </AlertDescription>
           </Alert>
