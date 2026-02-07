@@ -1,66 +1,106 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User } from 'firebase/auth';
-import { onAuthChange, getUserProfile, UserProfile } from '@/lib/auth';
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { User } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { onAuthChange, UserProfile } from "@/lib/auth";
 
 interface AuthContextType {
-    user: User | null;
-    userProfile: UserProfile | null;
-    loading: boolean;
-    isAuthenticated: boolean;
+  user: User | null;
+  userProfile: UserProfile | null;
+  loading: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
-    user: null,
-    userProfile: null,
-    loading: true,
-    isAuthenticated: false
+  user: null,
+  userProfile: null,
+  loading: true,
+  isAuthenticated: false,
 });
 
 export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth debe usarse dentro de AuthProvider');
-    }
-    return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth debe usarse dentro de AuthProvider");
+  }
+  return context;
 };
 
 interface AuthProviderProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const unsubscribe = onAuthChange(async (firebaseUser) => {
-            setUser(firebaseUser);
+  useEffect(() => {
+    let unsubscribeProfile: (() => void) | null = null;
 
-            if (firebaseUser) {
-                // Cargar perfil desde Firestore
-                const profile = await getUserProfile(firebaseUser.uid);
-                setUserProfile(profile);
-            } else {
-                setUserProfile(null);
-            }
+    const unsubscribeAuth = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(true);
 
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
+      if (!firebaseUser) {
+        setUserProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const profileRef = doc(db, "users", firebaseUser.uid);
+      unsubscribeProfile = onSnapshot(
+        profileRef,
+        (snapshot) => {
+          if (!snapshot.exists()) {
+            setUserProfile(null);
             setLoading(false);
-        });
+            return;
+          }
 
-        return () => unsubscribe();
-    }, []);
+          const data = snapshot.data();
+          setUserProfile({
+            uid: data.uid || firebaseUser.uid,
+            email: data.email || firebaseUser.email || "",
+            displayName: data.displayName,
+            plan: data.plan || "FREE",
+            role: data.role || "USER",
+            status: data.status,
+            trialEndsAt: data.trialEndsAt?.toDate?.(),
+            createdAt: data.createdAt?.toDate?.(),
+            updatedAt: data.updatedAt?.toDate?.(),
+            phone: data.phone,
+            sunatSecondaryUser: data.sunatSecondaryUser,
+            sunatSecondaryPassword: data.sunatSecondaryPassword,
+          });
+          setLoading(false);
+        },
+        () => {
+          setUserProfile(null);
+          setLoading(false);
+        }
+      );
+    });
 
-    const value: AuthContextType = {
-        user,
-        userProfile,
-        loading,
-        isAuthenticated: !!user
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
     };
+  }, []);
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const value: AuthContextType = {
+    user,
+    userProfile,
+    loading,
+    isAuthenticated: !!user,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

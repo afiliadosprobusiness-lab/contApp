@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Calculator, LayoutDashboard, Building2, FileText, Receipt,
@@ -12,6 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { logout } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,21 +25,21 @@ const navItems = [
   { label: "Configuración", icon: Settings, path: "/dashboard/configuracion" },
 ];
 
-const businesses = [
-  { ruc: "20601234567", name: "Mi Bodega SAC" },
-  { ruc: "10456789012", name: "Carlos Quispe - Persona Natural" },
-];
-
 const DashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedBusiness, setSelectedBusiness] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
+  const { businesses, selectedBusiness, setSelectedBusinessId, loading: businessesLoading } = useBusiness();
   const { toast } = useToast();
 
   const isActive = (path: string) => location.pathname === path;
+  const trialDaysLeft = useMemo(() => {
+    if (!userProfile?.trialEndsAt) return null;
+    const diffMs = userProfile.trialEndsAt.getTime() - Date.now();
+    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  }, [userProfile?.trialEndsAt]);
 
   const handleLogout = async () => {
     try {
@@ -151,25 +152,39 @@ const DashboardLayout = () => {
 
           {/* Business selector - Solo para usuarios normales */}
           {userProfile?.role !== 'ADMIN' && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 max-w-[220px]">
+            businessesLoading ? (
+              <Button variant="outline" size="sm" className="gap-2 max-w-[220px]" disabled>
+                <Building2 className="w-4 h-4 text-accent shrink-0" />
+                <span className="truncate text-xs">Cargando negocios...</span>
+              </Button>
+            ) : businesses.length === 0 ? (
+              <Button asChild variant="outline" size="sm" className="gap-2 max-w-[220px]">
+                <Link to="/dashboard/negocios">
                   <Building2 className="w-4 h-4 text-accent shrink-0" />
-                  <span className="truncate text-xs">{businesses[selectedBusiness].name}</span>
-                  <ChevronDown className="w-3 h-3 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {businesses.map((b, i) => (
-                  <DropdownMenuItem key={b.ruc} onClick={() => setSelectedBusiness(i)}>
-                    <div>
-                      <p className="text-sm font-medium">{b.name}</p>
-                      <p className="text-xs text-muted-foreground">RUC: {b.ruc}</p>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <span className="truncate text-xs">Agregar negocio</span>
+                </Link>
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 max-w-[220px]">
+                    <Building2 className="w-4 h-4 text-accent shrink-0" />
+                    <span className="truncate text-xs">{selectedBusiness?.name || "Seleccionar negocio"}</span>
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {businesses.map((b) => (
+                    <DropdownMenuItem key={b.id} onClick={() => setSelectedBusinessId(b.id)}>
+                      <div>
+                        <p className="text-sm font-medium">{b.name}</p>
+                        <p className="text-xs text-muted-foreground">RUC: {b.ruc}</p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
           )}
 
           <div className="flex-1" />
@@ -186,13 +201,17 @@ const DashboardLayout = () => {
         </header>
 
         {/* Trial banner - Solo para usuarios normales */}
-        {userProfile?.role !== 'ADMIN' && (
+        {userProfile?.role !== 'ADMIN' && userProfile?.status === "TRIAL" && (
           <Alert className="rounded-none border-x-0 border-t-0 bg-accent/10 border-accent/20">
             <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-sm">
-              <span className="text-accent font-medium">🎉 ¡Últimos 3 días de tu prueba gratis!</span>
-              <span className="text-muted-foreground">Sincroniza automáticamente tus comprobantes con el Plan PRO.</span>
+              <span className="text-accent font-medium">
+                {trialDaysLeft !== null
+                  ? `Te quedan ${trialDaysLeft} dias de prueba gratis!`
+                  : "Tu prueba gratis esta activa!"}
+              </span>
+              <span className="text-muted-foreground">Sincroniza automaticamente tus comprobantes con el Plan PRO.</span>
               <Link to="/dashboard/plan" className="text-accent font-semibold hover:underline ml-auto shrink-0">
-                Ver Planes →
+                Ver Planes ->
               </Link>
             </AlertDescription>
           </Alert>

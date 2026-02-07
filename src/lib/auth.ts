@@ -16,6 +16,10 @@ export interface UserProfile {
     uid: string;
     email: string;
     displayName?: string;
+    photoURL?: string;
+    phone?: string;
+    sunatSecondaryUser?: string;
+    sunatSecondaryPassword?: string;
     plan: 'FREE' | 'PRO' | 'PLUS';
     role: 'USER' | 'ADMIN';
     status?: 'TRIAL' | 'ACTIVE' | 'SUSPENDED';
@@ -156,6 +160,10 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
                 uid: data.uid,
                 email: data.email,
                 displayName: data.displayName,
+                photoURL: data.photoURL,
+                phone: data.phone,
+                sunatSecondaryUser: data.sunatSecondaryUser,
+                sunatSecondaryPassword: data.sunatSecondaryPassword,
                 plan: data.plan,
                 role: data.role || 'USER', // Default a USER si no existe
                 trialEndsAt: data.trialEndsAt?.toDate(),

@@ -1,41 +1,192 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Receipt, BrainCircuit, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useState } from "react";
 import { useAdminRedirect } from "@/hooks/useAdminRedirect";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 
-const kpiCards = [
-  { label: "Ventas del Mes", value: "S/ 12,500", change: "+8.2%", up: true, icon: DollarSign },
-  { label: "Compras Deducibles", value: "S/ 4,200", change: "+3.1%", up: true, icon: ShoppingCart },
-  { label: "IGV Estimado por Pagar", value: "S/ 1,494", change: "-2.5%", up: false, icon: Receipt },
-];
-
-const chartData = [
-  { mes: "Jul", ingresos: 9800, gastos: 4200 },
-  { mes: "Ago", ingresos: 11200, gastos: 3800 },
-  { mes: "Sep", ingresos: 10500, gastos: 5100 },
-  { mes: "Oct", ingresos: 13400, gastos: 4900 },
-  { mes: "Nov", ingresos: 11800, gastos: 4600 },
-  { mes: "Dic", ingresos: 14200, gastos: 5300 },
-  { mes: "Ene", ingresos: 12500, gastos: 4200 },
-];
+type Comprobante = {
+  id: string;
+  type: "VENTA" | "COMPRA";
+  serie?: string;
+  numero?: string;
+  fecha?: Date;
+  cliente?: string;
+  proveedor?: string;
+  monto: number;
+  igv: number;
+};
 
 const DashboardHome = () => {
   const [aiQuery, setAiQuery] = useState("");
+  const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { selectedBusiness, loading: businessesLoading } = useBusiness();
 
-  // Redirigir automáticamente si es admin
   useAdminRedirect();
+
+  useEffect(() => {
+    if (!user?.uid || !selectedBusiness?.id) {
+      setComprobantes([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const ref = collection(db, "users", user.uid, "businesses", selectedBusiness.id, "comprobantes");
+    const start = startOfMonth(subMonths(new Date(), 6));
+    const q = query(ref, where("fecha", ">=", Timestamp.fromDate(start)));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => {
+          const item = doc.data();
+          return {
+            id: doc.id,
+            type: item.type,
+            serie: item.serie,
+            numero: item.numero,
+            fecha: item.fecha?.toDate?.(),
+            cliente: item.cliente,
+            proveedor: item.proveedor,
+            monto: Number(item.monto || 0),
+            igv: Number(item.igv || 0),
+          } as Comprobante;
+        });
+        setComprobantes(data);
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid, selectedBusiness?.id]);
+
+  const formatCurrency = (value: number) =>
+    `S/ ${value.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const now = new Date();
+  const currentStart = startOfMonth(now);
+  const previousStart = startOfMonth(subMonths(now, 1));
+  const previousEnd = endOfMonth(subMonths(now, 1));
+
+  const totals = useMemo(() => {
+    const inRange = (date: Date | undefined, start: Date, end: Date) =>
+      date ? date >= start && date <= end : false;
+
+    const currentVentas = comprobantes.filter((c) => c.type === "VENTA" && inRange(c.fecha, currentStart, now));
+    const currentCompras = comprobantes.filter((c) => c.type === "COMPRA" && inRange(c.fecha, currentStart, now));
+    const previousVentas = comprobantes.filter((c) => c.type === "VENTA" && inRange(c.fecha, previousStart, previousEnd));
+    const previousCompras = comprobantes.filter((c) => c.type === "COMPRA" && inRange(c.fecha, previousStart, previousEnd));
+
+    const sum = (list: Comprobante[], key: "monto" | "igv") =>
+      list.reduce((acc, item) => acc + (item[key] || 0), 0);
+
+    const ventasMonto = sum(currentVentas, "monto");
+    const comprasMonto = sum(currentCompras, "monto");
+    const ventasIgv = sum(currentVentas, "igv");
+    const comprasIgv = sum(currentCompras, "igv");
+    const prevVentasMonto = sum(previousVentas, "monto");
+    const prevComprasMonto = sum(previousCompras, "monto");
+    const prevIgv = sum(previousVentas, "igv") - sum(previousCompras, "igv");
+
+    const igvToPay = Math.max(0, ventasIgv - comprasIgv);
+    const prevIgvToPay = Math.max(0, prevIgv);
+
+    const change = (current: number, previous: number) => {
+      if (previous == 0) return null;
+      return ((current - previous) / previous) * 100;
+    };
+
+    return {
+      ventasMonto,
+      comprasMonto,
+      igvToPay,
+      ventasChange: change(ventasMonto, prevVentasMonto),
+      comprasChange: change(comprasMonto, prevComprasMonto),
+      igvChange: change(igvToPay, prevIgvToPay),
+    };
+  }, [comprobantes, currentStart, now, previousEnd, previousStart]);
+
+  const chartData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => startOfMonth(subMonths(now, 5 - i)));
+
+    return months.map((month) => {
+      const start = month;
+      const end = endOfMonth(month);
+      const ingresos = comprobantes
+        .filter((c) => c.type === "VENTA" && c.fecha && c.fecha >= start && c.fecha <= end)
+        .reduce((acc, item) => acc + item.monto, 0);
+      const gastos = comprobantes
+        .filter((c) => c.type === "COMPRA" && c.fecha && c.fecha >= start && c.fecha <= end)
+        .reduce((acc, item) => acc + item.monto, 0);
+      return {
+        mes: month.toLocaleString("es-PE", { month: "short" }),
+        ingresos,
+        gastos,
+      };
+    });
+  }, [comprobantes, now]);
+
+  const formatChange = (value: number | null) =>
+    value === null ? "?" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+
+  const kpiCards = [
+    {
+      label: "Ventas del Mes",
+      value: formatCurrency(totals.ventasMonto),
+      change: formatChange(totals.ventasChange),
+      up: (totals.ventasChange ?? 0) >= 0,
+      icon: DollarSign,
+    },
+    {
+      label: "Compras Deducibles",
+      value: formatCurrency(totals.comprasMonto),
+      change: formatChange(totals.comprasChange),
+      up: (totals.comprasChange ?? 0) >= 0,
+      icon: ShoppingCart,
+    },
+    {
+      label: "IGV Estimado por Pagar",
+      value: formatCurrency(totals.igvToPay),
+      change: formatChange(totals.igvChange),
+      up: (totals.igvChange ?? 0) >= 0,
+      icon: Receipt,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Resumen financiero de Mi Bodega SAC</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            {selectedBusiness ? `Resumen financiero de ${selectedBusiness.name}` : "Resumen financiero"}
+          </p>
+        </div>
+        {loading && <span className="text-xs text-muted-foreground">Actualizando...</span>}
       </div>
 
-      {/* KPI Cards */}
+      {!businessesLoading && !selectedBusiness && (
+        <Card className="border-dashed border-muted-foreground/30">
+          <CardContent className="p-6 text-sm text-muted-foreground flex items-center justify-between">
+            <span>Agrega un negocio para ver tu resumen financiero.</span>
+            <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Link to="/dashboard/negocios">Ir a Mis Negocios</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid sm:grid-cols-3 gap-4">
         {kpiCards.map((kpi) => (
           <Card key={kpi.label} className="shadow-card border-border">
@@ -48,7 +199,7 @@ const DashboardHome = () => {
               </div>
               <p className="font-display text-2xl font-bold text-foreground">{kpi.value}</p>
               <div className="flex items-center gap-1 mt-1">
-                {kpi.up ? (
+                {kpi.change === "?" ? null : kpi.up ? (
                   <TrendingUp className="w-3.5 h-3.5 text-accent" />
                 ) : (
                   <TrendingDown className="w-3.5 h-3.5 text-destructive" />
@@ -64,7 +215,6 @@ const DashboardHome = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Chart */}
         <Card className="lg:col-span-2 shadow-card border-border">
           <CardHeader>
             <CardTitle className="font-display text-lg">Ingresos vs Gastos</CardTitle>
@@ -82,7 +232,7 @@ const DashboardHome = () => {
                       border: "1px solid hsl(214, 32%, 91%)",
                       boxShadow: "0 4px 24px -4px hsl(215 72% 22% / 0.08)",
                     }}
-                    formatter={(value: number) => [`S/ ${value.toLocaleString()}`, ""]}
+                    formatter={(value: number) => [`S/ ${value.toLocaleString("es-PE")}`, ""]}
                   />
                   <Legend />
                   <Bar dataKey="ingresos" fill="hsl(215, 72%, 22%)" radius={[4, 4, 0, 0]} name="Ingresos" />
@@ -93,7 +243,6 @@ const DashboardHome = () => {
           </CardContent>
         </Card>
 
-        {/* AI Widget */}
         <Card className="shadow-card border-border">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
@@ -105,14 +254,14 @@ const DashboardHome = () => {
             <div className="flex-1 space-y-3 mb-4">
               <div className="p-3 rounded-xl bg-accent/10 text-sm text-foreground">
                 <p className="font-medium text-accent mb-1">ContApp IA</p>
-                ¡Hola! Soy tu asistente contable. Puedo ayudarte con dudas sobre deducciones, IGV, renta y más. ¿En qué te ayudo hoy?
+                Hola! Soy tu asistente contable. Puedo ayudarte con dudas sobre deducciones, IGV, renta y mas. En que te ayudo hoy?
               </div>
               <div className="p-3 rounded-xl bg-secondary text-sm text-foreground ml-8">
-                ¿Es deducible un pasaje de bus para mi empresa?
+                Es deducible un pasaje de bus para mi empresa?
               </div>
               <div className="p-3 rounded-xl bg-accent/10 text-sm text-foreground">
                 <p className="font-medium text-accent mb-1">ContApp IA</p>
-                Sí, los gastos de transporte son deducibles si están vinculados a la actividad empresarial. Necesitas el boleto electrónico o factura con tu RUC. 📄
+                Si, los gastos de transporte son deducibles si estan vinculados a la actividad empresarial. Necesitas el boleto electronico o factura con tu RUC.
               </div>
             </div>
             <div className="flex gap-2">
