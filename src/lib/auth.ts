@@ -18,6 +18,7 @@ export interface UserProfile {
     displayName?: string;
     plan: 'FREE' | 'PRO' | 'PLUS';
     role: 'USER' | 'ADMIN';
+    status?: 'TRIAL' | 'ACTIVE' | 'SUSPENDED';
     trialEndsAt?: Date;
     createdAt: Date;
     updatedAt: Date;
