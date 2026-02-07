@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F2A4A"/>
+      <stop offset="0.6" stop-color="#173B63"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="80" y="90" width="1040" height="450" rx="40" fill="rgba(255,255,255,0.08)"/>
+  <rect x="120" y="130" width="120" height="120" rx="24" fill="#10B981"/>
+  <path d="M162 216V156H178C188.941 156 198 165.059 198 176C198 186.941 188.941 196 178 196H170V216H162ZM170 188H178C184.627 188 190 182.627 190 176C190 169.373 184.627 164 178 164H170V188Z" fill="#0F2A4A"/>
+  <path d="M228 216C217.059 216 208 206.941 208 196V176C208 165.059 217.059 156 228 156C238.941 156 248 165.059 248 176V196C248 206.941 238.941 216 228 216ZM228 208C234.627 208 240 202.627 240 196V176C240 169.373 234.627 164 228 164C221.373 164 216 169.373 216 176V196C216 202.627 221.373 208 228 208Z" fill="#0F2A4A"/>
+  <text x="280" y="205" fill="#FFFFFF" font-size="54" font-family="Arial, sans-serif" font-weight="700">
+    ContApp Peru
+  </text>
+  <text x="280" y="265" fill="#D6E6F5" font-size="28" font-family="Arial, sans-serif">
+    Tu Contador Inteligente para SUNAT
+  </text>
+  <text x="120" y="360" fill="#FFFFFF" font-size="32" font-family="Arial, sans-serif">
+    Automatiza impuestos, controla comprobantes y gestiona negocios con IA.
+  </text>
+  <text x="120" y="410" fill="#D6E6F5" font-size="24" font-family="Arial, sans-serif">
+    Pensado para emprendedores y negocios en Peru.
+  </text>
+</svg>
