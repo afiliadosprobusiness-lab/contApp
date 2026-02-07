@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Receipt, BrainCircuit, Send } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  ShoppingCart,
+  Receipt,
+  BrainCircuit,
+  Send,
+  KeyRound,
+  Loader2,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +21,8 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { getStoredAiKey, getStoredAiMode, setStoredAiKey, setStoredAiMode } from "@/lib/ai";
 
 type Comprobante = {
   id: string;
@@ -24,14 +36,38 @@ type Comprobante = {
   igv: number;
 };
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+const SYSTEM_PROMPT =
+  "Eres un asistente contable para Peru. Responde en espanol claro, breve y accionable. Si no sabes, dilo.";
+
 const DashboardHome = () => {
   const [aiQuery, setAiQuery] = useState("");
+  const [aiMessages, setAiMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content:
+        "Hola! Soy tu asistente contable. Puedo ayudarte con dudas sobre deducciones, IGV, renta y mas. En que te ayudo hoy?",
+    },
+  ]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiKey, setAiKey] = useState("");
+  const [useOwnKey, setUseOwnKey] = useState(true);
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { selectedBusiness, loading: businessesLoading } = useBusiness();
+  const { toast } = useToast();
 
   useAdminRedirect();
+
+  useEffect(() => {
+    setAiKey(getStoredAiKey());
+    setUseOwnKey(getStoredAiMode());
+  }, []);
 
   useEffect(() => {
     if (!user?.uid || !selectedBusiness?.id) {
@@ -138,7 +174,7 @@ const DashboardHome = () => {
   }, [comprobantes, now]);
 
   const formatChange = (value: number | null) =>
-    value === null ? "?" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+    value === null ? "N/A" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
   const kpiCards = [
     {
@@ -164,6 +200,74 @@ const DashboardHome = () => {
     },
   ];
 
+  const handleSaveKey = () => {
+    const key = aiKey.trim();
+    setStoredAiKey(key);
+    toast({
+      title: key ? "Clave guardada" : "Clave eliminada",
+      description: "Se guarda solo en este navegador.",
+    });
+  };
+
+  const handleModeChange = (useOwn: boolean) => {
+    setUseOwnKey(useOwn);
+    setStoredAiMode(useOwn);
+  };
+
+  const handleSend = async () => {
+    const content = aiQuery.trim();
+    if (!content || aiLoading) return;
+
+    if (useOwnKey && !aiKey.trim()) {
+      toast({
+        title: "Falta tu API key",
+        description: "Ingresa tu clave para usar el asistente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nextMessages = [...aiMessages, { role: "user", content }];
+    setAiMessages(nextMessages);
+    setAiQuery("");
+    setAiLoading(true);
+
+    try {
+      const history = nextMessages.slice(-8).map((msg) => ({ role: msg.role, content: msg.content }));
+      const payload = {
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
+        apiKey: useOwnKey ? aiKey.trim() : undefined,
+        model: "gpt-4o-mini",
+      };
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Error en el servicio de IA");
+      }
+
+      const reply = (data?.reply || "").trim();
+      if (!reply) {
+        throw new Error("Respuesta vacia");
+      }
+
+      setAiMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (error: any) {
+      toast({
+        title: "Error en ContApp IA",
+        description: error?.message || "No se pudo completar la solicitud",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -178,9 +282,13 @@ const DashboardHome = () => {
 
       {!businessesLoading && !selectedBusiness && (
         <Card className="border-dashed border-muted-foreground/30">
-          <CardContent className="p-6 text-sm text-muted-foreground flex items-center justify-between">
+          <CardContent className="p-6 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
             <span>Agrega un negocio para ver tu resumen financiero.</span>
-            <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button
+              asChild
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto"
+            >
               <Link to="/dashboard/negocios">Ir a Mis Negocios</Link>
             </Button>
           </CardContent>
@@ -199,7 +307,7 @@ const DashboardHome = () => {
               </div>
               <p className="font-display text-2xl font-bold text-foreground">{kpi.value}</p>
               <div className="flex items-center gap-1 mt-1">
-                {kpi.change === "?" ? null : kpi.up ? (
+                {kpi.change === "N/A" ? null : kpi.up ? (
                   <TrendingUp className="w-3.5 h-3.5 text-accent" />
                 ) : (
                   <TrendingDown className="w-3.5 h-3.5 text-destructive" />
@@ -250,29 +358,92 @@ const DashboardHome = () => {
               ContApp IA
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col h-[calc(100%-4rem)]">
-            <div className="flex-1 space-y-3 mb-4">
-              <div className="p-3 rounded-xl bg-accent/10 text-sm text-foreground">
-                <p className="font-medium text-accent mb-1">ContApp IA</p>
-                Hola! Soy tu asistente contable. Puedo ayudarte con dudas sobre deducciones, IGV, renta y mas. En que te ayudo hoy?
+          <CardContent className="flex flex-col gap-4">
+            <div className="rounded-xl border border-border/60 p-3 text-xs text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2 text-foreground">
+                  <KeyRound className="w-4 h-4 text-accent" />
+                  <span>Modo de clave</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={useOwnKey ? "default" : "outline"}
+                    className={useOwnKey ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}
+                    onClick={() => handleModeChange(true)}
+                  >
+                    Usar mi key
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={!useOwnKey ? "default" : "outline"}
+                    className={!useOwnKey ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
+                    onClick={() => handleModeChange(false)}
+                  >
+                    Usar clave app
+                  </Button>
+                </div>
               </div>
-              <div className="p-3 rounded-xl bg-secondary text-sm text-foreground ml-8">
-                Es deducible un pasaje de bus para mi empresa?
-              </div>
-              <div className="p-3 rounded-xl bg-accent/10 text-sm text-foreground">
-                <p className="font-medium text-accent mb-1">ContApp IA</p>
-                Si, los gastos de transporte son deducibles si estan vinculados a la actividad empresarial. Necesitas el boleto electronico o factura con tu RUC.
-              </div>
+              {useOwnKey ? (
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="password"
+                    placeholder="sk-..."
+                    value={aiKey}
+                    onChange={(e) => setAiKey(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={handleSaveKey} className="bg-accent text-accent-foreground">
+                    Guardar
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-2">Necesitas OPENAI_API_KEY en Vercel para este modo.</p>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex-1 space-y-3 max-h-[260px] overflow-y-auto pr-1">
+              {aiMessages.map((msg, index) => (
+                <div
+                  key={`${msg.role}-${index}`}
+                  className={
+                    msg.role === "assistant"
+                      ? "p-3 rounded-xl bg-accent/10 text-sm text-foreground"
+                      : "p-3 rounded-xl bg-secondary text-sm text-foreground ml-6"
+                  }
+                >
+                  {msg.role === "assistant" && <p className="font-medium text-accent mb-1">ContApp IA</p>}
+                  {msg.content}
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="p-3 rounded-xl bg-accent/10 text-sm text-foreground">
+                  <p className="font-medium text-accent mb-1">ContApp IA</p>
+                  Escribiendo...
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder="Pregunta algo..."
                 className="text-sm"
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
               />
-              <Button size="icon" className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0">
-                <Send className="w-4 h-4" />
+              <Button
+                size="icon"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0 w-full sm:w-auto"
+                onClick={handleSend}
+                disabled={aiLoading}
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
           </CardContent>
