@@ -11,6 +11,7 @@ export interface Business {
   name: string;
   type: string;
   status: BusinessStatus;
+  sunatSecondaryUser?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -55,6 +56,7 @@ export const BusinessProvider = ({ children }: { children: React.ReactNode }) =>
             name: item.name,
             type: item.type || "Sin tipo",
             status: (item.status || "ACTIVE") as BusinessStatus,
+            sunatSecondaryUser: item.sunatSecondaryUser,
             createdAt: item.createdAt?.toDate?.(),
             updatedAt: item.updatedAt?.toDate?.(),
           } as Business;

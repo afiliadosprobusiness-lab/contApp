@@ -47,6 +47,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null && 
                             (request.auth.uid == userId || isAdmin());
     }
+
+    // SUNAT sync status (written by backend, readable by user)
+    match /users/{userId}/sunat_sync/{syncId} {
+      allow read: if request.auth != null &&
+                     (request.auth.uid == userId || isAdmin());
+      allow write: if false;
+    }
+
+    // SUNAT credentials (only backend should access)
+    match /users/{userId}/sunat_credentials/{credId} {
+      allow read, write: if false;
+    }
     
     // Subscriptions
     match /subscriptions/{subscriptionId} {

@@ -6,46 +6,56 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { useToast } from "@/hooks/use-toast";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { updateProfile } from "firebase/auth";
+import { saveSunatCredentials } from "@/lib/sunat";
 
 const Configuracion = () => {
   const { user, userProfile, loading } = useAuth();
+  const { selectedBusiness } = useBusiness();
   const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingSunat, setSavingSunat] = useState(false);
+  const [profileForm, setProfileForm] = useState({
     displayName: "",
     phone: "",
-    sunatSecondaryUser: "",
-    sunatSecondaryPassword: "",
+  });
+  const [sunatForm, setSunatForm] = useState({
+    solUser: "",
+    solPassword: "",
   });
 
   useEffect(() => {
     if (!userProfile) return;
-    setForm({
+    setProfileForm({
       displayName: userProfile.displayName || "",
       phone: userProfile.phone || "",
-      sunatSecondaryUser: userProfile.sunatSecondaryUser || "",
-      sunatSecondaryPassword: userProfile.sunatSecondaryPassword || "",
     });
   }, [userProfile]);
+
+  useEffect(() => {
+    if (!selectedBusiness) return;
+    setSunatForm({
+      solUser: selectedBusiness.sunatSecondaryUser || "",
+      solPassword: "",
+    });
+  }, [selectedBusiness]);
 
   const handleSaveProfile = async () => {
     if (!user?.uid) return;
     try {
-      setSaving(true);
+      setSavingProfile(true);
       await updateDoc(doc(db, "users", user.uid), {
-        displayName: form.displayName.trim(),
-        phone: form.phone.trim(),
-        sunatSecondaryUser: form.sunatSecondaryUser.trim(),
-        sunatSecondaryPassword: form.sunatSecondaryPassword.trim(),
+        displayName: profileForm.displayName.trim(),
+        phone: profileForm.phone.trim(),
         updatedAt: serverTimestamp(),
       });
 
-      if (form.displayName.trim() && user.displayName !== form.displayName.trim()) {
-        await updateProfile(user, { displayName: form.displayName.trim() });
+      if (profileForm.displayName.trim() && user.displayName !== profileForm.displayName.trim()) {
+        await updateProfile(user, { displayName: profileForm.displayName.trim() });
       }
 
       toast({
@@ -59,7 +69,48 @@ const Configuracion = () => {
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSaveSunat = async () => {
+    if (!user?.uid || !selectedBusiness) return;
+    if (!sunatForm.solUser.trim() || !sunatForm.solPassword.trim()) {
+      toast({
+        title: "Datos incompletos",
+        description: "Ingresa usuario y clave SOL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSavingSunat(true);
+      await saveSunatCredentials({
+        businessId: selectedBusiness.id,
+        ruc: selectedBusiness.ruc,
+        solUser: sunatForm.solUser.trim(),
+        solPassword: sunatForm.solPassword.trim(),
+      });
+
+      await updateDoc(doc(db, "users", user.uid, "businesses", selectedBusiness.id), {
+        sunatSecondaryUser: sunatForm.solUser.trim(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setSunatForm((prev) => ({ ...prev, solPassword: "" }));
+      toast({
+        title: "Credenciales guardadas",
+        description: "Se guardaron en el servidor de forma segura",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "No se pudo guardar SUNAT",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSunat(false);
     }
   };
 
@@ -88,7 +139,7 @@ const Configuracion = () => {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nombre completo</Label>
-              <Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+              <Input value={profileForm.displayName} onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Correo electronico</Label>
@@ -96,11 +147,11 @@ const Configuracion = () => {
             </div>
             <div className="space-y-2">
               <Label>Telefono</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} />
             </div>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2" onClick={handleSaveProfile} disabled={saving}>
-            <Save className="w-4 h-4" /> {saving ? "Guardando..." : "Guardar Cambios"}
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2" onClick={handleSaveProfile} disabled={savingProfile}>
+            <Save className="w-4 h-4" /> {savingProfile ? "Guardando..." : "Guardar Cambios"}
           </Button>
         </CardContent>
       </Card>
@@ -115,32 +166,49 @@ const Configuracion = () => {
           <p className="text-sm text-muted-foreground">
             Configura tu Usuario Secundario para sincronizar comprobantes automaticamente.
           </p>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Usuario Secundario</Label>
-              <Input
-                placeholder="MODDATOS"
-                value={form.sunatSecondaryUser}
-                onChange={(e) => setForm({ ...form, sunatSecondaryUser: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Clave SOL Secundaria</Label>
-              <Input
-                type="password"
-                placeholder="********"
-                value={form.sunatSecondaryPassword}
-                onChange={(e) => setForm({ ...form, sunatSecondaryPassword: e.target.value })}
-              />
-            </div>
-          </div>
-          <a href="#" className="text-sm text-accent hover:underline">
-            Como crear tu Usuario Secundario en SUNAT? (2 minutos)
-          </a>
-          <Separator />
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleSaveProfile} disabled={saving}>
-            Guardar y sincronizar
-          </Button>
+
+          {!selectedBusiness ? (
+            <div className="text-sm text-muted-foreground">Selecciona un negocio para configurar SUNAT.</div>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>RUC</Label>
+                  <Input value={selectedBusiness.ruc} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Negocio</Label>
+                  <Input value={selectedBusiness.name} disabled />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Usuario Secundario</Label>
+                  <Input
+                    placeholder="MODDATOS"
+                    value={sunatForm.solUser}
+                    onChange={(e) => setSunatForm({ ...sunatForm, solUser: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Clave SOL Secundaria</Label>
+                  <Input
+                    type="password"
+                    placeholder="********"
+                    value={sunatForm.solPassword}
+                    onChange={(e) => setSunatForm({ ...sunatForm, solPassword: e.target.value })}
+                  />
+                </div>
+              </div>
+              <a href="#" className="text-sm text-accent hover:underline">
+                Como crear tu Usuario Secundario en SUNAT? (2 minutos)
+              </a>
+              <Separator />
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleSaveSunat} disabled={savingSunat}>
+                {savingSunat ? "Guardando..." : "Guardar credenciales"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Upload, Search, Filter, Plus, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Upload, Search, Filter, Plus, Loader2, RefreshCw } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,11 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { addDoc, collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { syncSunat } from "@/lib/sunat";
 
 type Comprobante = {
   id: string;
@@ -39,6 +41,14 @@ type Comprobante = {
   igv: number;
 };
 
+type SunatStatus = {
+  status?: string;
+  lastPeriod?: { year: number; month: number };
+  lastRunAt?: Date;
+  lastError?: string;
+  lastResult?: { ventas?: number; compras?: number };
+};
+
 const Comprobantes = () => {
   const { user } = useAuth();
   const { selectedBusiness } = useBusiness();
@@ -49,6 +59,9 @@ const Comprobantes = () => {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [sunatStatus, setSunatStatus] = useState<SunatStatus | null>(null);
+  const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [form, setForm] = useState({
     type: "VENTA",
     serie: "",
@@ -64,6 +77,7 @@ const Comprobantes = () => {
     if (!user?.uid || !selectedBusiness?.id) {
       setVentas([]);
       setCompras([]);
+      setSunatStatus(null);
       setLoading(false);
       return;
     }
@@ -76,10 +90,10 @@ const Comprobantes = () => {
     const unsubscribeVentas = onSnapshot(
       ventasQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => {
-          const item = doc.data();
+        const data = snapshot.docs.map((docSnap) => {
+          const item = docSnap.data();
           return {
-            id: doc.id,
+            id: docSnap.id,
             type: item.type,
             serie: item.serie,
             numero: item.numero,
@@ -100,10 +114,10 @@ const Comprobantes = () => {
     const unsubscribeCompras = onSnapshot(
       comprasQuery,
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => {
-          const item = doc.data();
+        const data = snapshot.docs.map((docSnap) => {
+          const item = docSnap.data();
           return {
-            id: doc.id,
+            id: docSnap.id,
             type: item.type,
             serie: item.serie,
             numero: item.numero,
@@ -121,9 +135,26 @@ const Comprobantes = () => {
       () => setLoading(false)
     );
 
+    const statusRef = doc(db, "users", user.uid, "sunat_sync", selectedBusiness.id);
+    const unsubscribeStatus = onSnapshot(statusRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setSunatStatus({ status: "IDLE" });
+        return;
+      }
+      const data = snapshot.data();
+      setSunatStatus({
+        status: data.status,
+        lastPeriod: data.lastPeriod,
+        lastRunAt: data.lastRunAt?.toDate?.(),
+        lastError: data.lastError,
+        lastResult: data.lastResult,
+      });
+    });
+
     return () => {
       unsubscribeVentas();
       unsubscribeCompras();
+      unsubscribeStatus();
     };
   }, [user?.uid, selectedBusiness?.id]);
 
@@ -150,6 +181,17 @@ const Comprobantes = () => {
 
   const formatCurrency = (value: number) =>
     `S/ ${value.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const formatDate = (value?: Date) => {
+    if (!value) return "-";
+    return value.toLocaleString("es-PE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const openDialog = () => {
     setForm({
@@ -210,6 +252,54 @@ const Comprobantes = () => {
     }
   };
 
+  const handleSync = async () => {
+    if (!selectedBusiness) return;
+    if (!period) {
+      toast({
+        title: "Selecciona un periodo",
+        description: "Elige mes y anio para sincronizar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const [yearRaw, monthRaw] = period.split("-");
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    if (!year || !month) {
+      toast({
+        title: "Periodo invalido",
+        description: "Selecciona un mes valido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      await syncSunat({ businessId: selectedBusiness.id, year, month });
+      toast({
+        title: "Sincronizacion iniciada",
+        description: "Estamos consultando SUNAT. Esto puede tardar unos minutos.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error de sincronizacion",
+        description: error?.message || "No se pudo sincronizar",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const statusLabel = sunatStatus?.status || "IDLE";
+  const statusVariant =
+    statusLabel === "RUNNING" ? "bg-primary/10 text-primary" :
+    statusLabel === "OK" ? "bg-emerald-light text-accent" :
+    statusLabel === "ERROR" ? "bg-destructive/10 text-destructive" :
+    "bg-muted text-muted-foreground";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -221,6 +311,52 @@ const Comprobantes = () => {
           <Plus className="w-4 h-4" /> Nuevo comprobante
         </Button>
       </div>
+
+      <Card className="shadow-card border-border">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold">Sincronizar SUNAT</h2>
+              <p className="text-sm text-muted-foreground">Selecciona un periodo y sincroniza ventas y compras.</p>
+            </div>
+            <Badge className={`text-xs ${statusVariant}`}>Estado: {statusLabel}</Badge>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Label className="text-xs text-muted-foreground">Periodo</Label>
+              <Input
+                type="month"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                className="w-full sm:w-[160px]"
+                disabled={!selectedBusiness}
+              />
+            </div>
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 w-full sm:w-auto"
+              onClick={handleSync}
+              disabled={syncing || !selectedBusiness}
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {syncing ? "Sincronizando..." : "Sincronizar"}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>Ultima sincronizacion: {formatDate(sunatStatus?.lastRunAt)}</div>
+            {sunatStatus?.lastPeriod && (
+              <div>Periodo: {sunatStatus.lastPeriod.month}/{sunatStatus.lastPeriod.year}</div>
+            )}
+            {sunatStatus?.lastResult && (
+              <div>
+                Resultados: ventas {sunatStatus.lastResult.ventas || 0}, compras {sunatStatus.lastResult.compras || 0}
+              </div>
+            )}
+            {sunatStatus?.lastError && (
+              <div className="text-destructive">Error: {sunatStatus.lastError}</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-2 border-dashed border-accent/30 bg-accent/5 shadow-none">
         <CardContent className="p-8 text-center">
@@ -266,7 +402,7 @@ const Comprobantes = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ventasFiltradas.length === 0 ? (
+                  {ventasFiltradas.length == 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                         No hay ventas registradas
@@ -307,7 +443,7 @@ const Comprobantes = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {comprasFiltradas.length === 0 ? (
+                  {comprasFiltradas.length == 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                         No hay compras registradas
