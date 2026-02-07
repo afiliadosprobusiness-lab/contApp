@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Calculator, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Calculator, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,14 @@ const Login = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/");
     }
   };
 
@@ -83,6 +91,17 @@ const Login = () => {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="mb-4 gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver
+          </Button>
+
           <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
             <div className="w-9 h-9 rounded-lg gradient-emerald flex items-center justify-center">
               <Calculator className="w-5 h-5 text-accent-foreground" />
