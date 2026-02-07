@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Upload, Search, Filter, Plus, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ const Comprobantes = () => {
   const [syncing, setSyncing] = useState(false);
   const [sunatStatus, setSunatStatus] = useState<SunatStatus | null>(null);
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const hasSunatCredentials = Boolean(selectedBusiness?.sunatSecondaryUser);
   const [form, setForm] = useState({
     type: "VENTA",
     serie: "",
@@ -254,6 +256,14 @@ const Comprobantes = () => {
 
   const handleSync = async () => {
     if (!selectedBusiness) return;
+    if (!hasSunatCredentials) {
+      toast({
+        title: "Credenciales SUNAT faltantes",
+        description: "Configura el Usuario Secundario y Clave SOL en Configuracion.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!period) {
       toast({
         title: "Selecciona un periodo",
@@ -335,12 +345,15 @@ const Comprobantes = () => {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 w-full sm:w-auto"
               onClick={handleSync}
-              disabled={syncing || !selectedBusiness}
+              disabled={syncing || !selectedBusiness || !hasSunatCredentials}
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               {syncing ? "Sincronizando..." : "Sincronizar"}
             </Button>
           </div>
+          {!hasSunatCredentials && (
+            <div className="text-xs text-destructive">Configura tus credenciales SUNAT en Configuracion.</div>
+          )}
           <div className="text-xs text-muted-foreground space-y-1">
             <div>Ultima sincronizacion: {formatDate(sunatStatus?.lastRunAt)}</div>
             {sunatStatus?.lastPeriod && (
