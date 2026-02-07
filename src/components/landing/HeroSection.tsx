@@ -25,11 +25,11 @@ const HeroSection = () => {
 
             <h1 className="font-display text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold leading-tight text-primary mb-6">
               ContApp Pe: Tu Contador Inteligente,{" "}
-              <span className="text-accent">Adiós a la SUNAT.</span>
+              <span className="text-accent">Sin Complicaciones.</span>
             </h1>
 
             <p className="text-lg text-muted-foreground mb-8 max-w-lg">
-              Automatiza tus impuestos, recibe alertas y gestiona tus negocios con IA. 
+              Automatiza tus impuestos, recibe alertas y gestiona tus negocios con IA.
               Simplifica tu contabilidad en Perú.
             </p>
 
@@ -66,9 +66,9 @@ const HeroSection = () => {
             className="relative"
           >
             <div className="relative rounded-2xl overflow-hidden shadow-elevated border border-border">
-              <img 
-                src={heroDashboard} 
-                alt="Dashboard de ContApp Pe mostrando gráficos financieros" 
+              <img
+                src={heroDashboard}
+                alt="Dashboard de ContApp Pe mostrando gráficos financieros"
                 className="w-full h-auto"
                 loading="lazy"
               />

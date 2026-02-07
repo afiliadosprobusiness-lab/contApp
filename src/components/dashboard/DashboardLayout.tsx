@@ -11,6 +11,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { logout } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -32,8 +35,27 @@ const DashboardLayout = () => {
   const [selectedBusiness, setSelectedBusiness] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
+  const { toast } = useToast();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente",
+      });
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: "Error al cerrar sesión",
+        description: "Intenta nuevamente",
+        variant: "destructive",
+      });
+    }
+  };
 
   const SidebarContent = () => (
     <>
@@ -163,7 +185,7 @@ const DashboardLayout = () => {
             <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2 text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground">
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Salir</span>
           </Button>

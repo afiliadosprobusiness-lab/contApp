@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useState } from "react";
+import { useAdminRedirect } from "@/hooks/useAdminRedirect";
 
 const kpiCards = [
   { label: "Ventas del Mes", value: "S/ 12,500", change: "+8.2%", up: true, icon: DollarSign },
@@ -23,6 +24,9 @@ const chartData = [
 
 const DashboardHome = () => {
   const [aiQuery, setAiQuery] = useState("");
+
+  // Redirigir automáticamente si es admin
+  useAdminRedirect();
 
   return (
     <div className="space-y-6">
