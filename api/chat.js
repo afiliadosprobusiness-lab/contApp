@@ -3,11 +3,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { messages, apiKey, model } = req.body || {};
-  const key = apiKey || process.env.OPENAI_API_KEY;
+  const { messages, model } = req.body || {};
+  const key = process.env.OPENAI_API_KEY;
 
   if (!key) {
-    return res.status(400).json({ error: "Missing API key" });
+    return res.status(400).json({ error: "Missing OPENAI_API_KEY" });
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {

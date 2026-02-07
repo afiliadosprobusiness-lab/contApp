@@ -8,7 +8,6 @@ import {
   Receipt,
   BrainCircuit,
   Send,
-  KeyRound,
   Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,6 @@ import { collection, onSnapshot, query, Timestamp, where } from "firebase/firest
 import { db } from "@/lib/firebase";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { getStoredAiKey, getStoredAiMode, setStoredAiKey, setStoredAiMode } from "@/lib/ai";
 
 type Comprobante = {
   id: string;
@@ -54,8 +52,6 @@ const DashboardHome = () => {
     },
   ]);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiKey, setAiKey] = useState("");
-  const [useOwnKey, setUseOwnKey] = useState(true);
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -63,11 +59,6 @@ const DashboardHome = () => {
   const { toast } = useToast();
 
   useAdminRedirect();
-
-  useEffect(() => {
-    setAiKey(getStoredAiKey());
-    setUseOwnKey(getStoredAiMode());
-  }, []);
 
   useEffect(() => {
     if (!user?.uid || !selectedBusiness?.id) {
@@ -200,32 +191,9 @@ const DashboardHome = () => {
     },
   ];
 
-  const handleSaveKey = () => {
-    const key = aiKey.trim();
-    setStoredAiKey(key);
-    toast({
-      title: key ? "Clave guardada" : "Clave eliminada",
-      description: "Se guarda solo en este navegador.",
-    });
-  };
-
-  const handleModeChange = (useOwn: boolean) => {
-    setUseOwnKey(useOwn);
-    setStoredAiMode(useOwn);
-  };
-
   const handleSend = async () => {
     const content = aiQuery.trim();
     if (!content || aiLoading) return;
-
-    if (useOwnKey && !aiKey.trim()) {
-      toast({
-        title: "Falta tu API key",
-        description: "Ingresa tu clave para usar el asistente.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const nextMessages = [...aiMessages, { role: "user", content }];
     setAiMessages(nextMessages);
@@ -236,7 +204,6 @@ const DashboardHome = () => {
       const history = nextMessages.slice(-8).map((msg) => ({ role: msg.role, content: msg.content }));
       const payload = {
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
-        apiKey: useOwnKey ? aiKey.trim() : undefined,
         model: "gpt-4o-mini",
       };
 
@@ -359,49 +326,6 @@ const DashboardHome = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="rounded-xl border border-border/60 p-3 text-xs text-muted-foreground">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-2 text-foreground">
-                  <KeyRound className="w-4 h-4 text-accent" />
-                  <span>Modo de clave</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant={useOwnKey ? "default" : "outline"}
-                    className={useOwnKey ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}
-                    onClick={() => handleModeChange(true)}
-                  >
-                    Usar mi key
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={!useOwnKey ? "default" : "outline"}
-                    className={!useOwnKey ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
-                    onClick={() => handleModeChange(false)}
-                  >
-                    Usar clave app
-                  </Button>
-                </div>
-              </div>
-              {useOwnKey ? (
-                <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                  <Input
-                    type="password"
-                    placeholder="sk-..."
-                    value={aiKey}
-                    onChange={(e) => setAiKey(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button size="sm" onClick={handleSaveKey} className="bg-accent text-accent-foreground">
-                    Guardar
-                  </Button>
-                </div>
-              ) : (
-                <p className="mt-2">Necesitas OPENAI_API_KEY en Vercel para este modo.</p>
-              )}
-            </div>
-
             <div className="flex-1 space-y-3 max-h-[260px] overflow-y-auto pr-1">
               {aiMessages.map((msg, index) => (
                 <div
