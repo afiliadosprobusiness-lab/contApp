@@ -1,73 +1,79 @@
-# Welcome to your Lovable project
+# ContApp Perú (Frontend)
 
-## Project info
+Frontend web de ContApp Perú. Incluye dashboard en tiempo real, integración SUNAT, asistente IA y planes de suscripción.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Stack**
+- Vite + React + TypeScript
+- Tailwind + shadcn-ui
+- Firebase (Auth + Firestore)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Qué puede hacer el sistema
 
-**Use Lovable**
+- Dashboard financiero en tiempo real (ventas, compras, IGV).
+- Gestión de negocios con RUC y autocompletado desde SUNAT (padrón reducido).
+- Sincronización SUNAT con credenciales de Usuario Secundario (worker separado).
+- Asistente ContApp IA con chat (backend propio).
+- Suscripciones PayPal PRO/PLUS con activación automática por webhook.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## Arquitectura (alto nivel)
 
-**Use your preferred IDE**
+- **Frontend (este repo)**: Vercel
+- **Backend principal**: Cloud Run (PayPal + OpenAI)
+- **SUNAT Worker**: Cloud Run (automatización y sincronización)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Repos relacionados:
+- Backend: `contapp-pe-backend`
+- SUNAT Worker: `contapp-pe-sunat-worker`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## Variables de entorno (Vercel)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Mantén solo variables **VITE_** en Vercel.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Requeridas:
+- `VITE_BACKEND_URL` = URL del backend principal (Cloud Run)
+- `VITE_SUNAT_API_URL` = URL del SUNAT Worker (Cloud Run)
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID`
+- `VITE_ADMIN_EMAIL`
 
-# Step 3: Install the necessary dependencies.
-npm i
+Opcionales:
+- `VITE_PAYPAL_ENV` (live/sandbox)
+- `VITE_PAYPAL_MANAGE_URL` (portal de suscripciones PayPal)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+---
+
+## Desarrollo local
+
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Deploy
 
-**Use GitHub Codespaces**
+- **Frontend**: Vercel
+- **Backend principal**: Cloud Run
+- **SUNAT Worker**: Cloud Run
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Si actualizas variables en Vercel, haz redeploy para aplicar cambios.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Notas importantes
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Los secretos (PayPal/OpenAI/Firebase Admin) viven **solo** en Cloud Run.
+- En Vercel se dejan únicamente variables `VITE_*`.
+- Los planes PayPal son mensuales y activan el plan automáticamente vía webhook.
