@@ -153,7 +153,7 @@ const DashboardLayout = () => {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
+        <header className="sticky top-0 z-30 h-14 border-b border-border bg-card/95 backdrop-blur flex items-center px-4 gap-3 shrink-0">
           <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
             <Menu className="w-5 h-5 text-foreground" />
           </button>
