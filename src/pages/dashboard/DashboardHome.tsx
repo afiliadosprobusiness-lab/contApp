@@ -21,6 +21,7 @@ import { collection, onSnapshot, query, Timestamp, where } from "firebase/firest
 import { db } from "@/lib/firebase";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { postWithAuth } from "@/lib/backend";
 
 type Comprobante = {
   id: string;
@@ -217,17 +218,7 @@ const DashboardHome = () => {
         model: "gpt-4o-mini",
       };
 
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || "Error en el servicio de IA");
-      }
-
+      const data = await postWithAuth<{ reply: string }>("/chat", payload);
       const reply = (data?.reply || "").trim();
       if (!reply) {
         throw new Error("Respuesta vacia");

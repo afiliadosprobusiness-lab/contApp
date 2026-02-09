@@ -1,30 +1,7 @@
-import { getAuth } from "firebase/auth";
-
-const getAuthToken = async () => {
-  const user = getAuth().currentUser;
-  if (!user) {
-    throw new Error("Usuario no autenticado");
-  }
-  return user.getIdToken();
-};
+import { postWithAuth } from "@/lib/backend";
 
 export const createPaypalSubscription = async (planCode: "PRO" | "PLUS") => {
-  const token = await getAuthToken();
-  const response = await fetch("/api/paypal/create-subscription", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ planCode }),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error || "No se pudo crear la suscripcion");
-  }
-
-  return data as { approvalUrl: string; subscriptionId: string };
+  return postWithAuth<{ approvalUrl: string; subscriptionId: string }>("/paypal/create-subscription", { planCode });
 };
 
 export const getPaypalManageUrl = () => {
