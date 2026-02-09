@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { Check, CreditCard, Zap } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { createPaypalSubscription, getPaypalManageUrl } from "@/lib/paypal";
 
 const plans = [
   {
@@ -31,6 +34,8 @@ const plans = [
 const MiPlan = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
   const currentPlan = userProfile?.plan || "FREE";
   const status = userProfile?.status || "TRIAL";
@@ -40,11 +45,43 @@ const MiPlan = () => {
   const statusLabel = status === "TRIAL" ? "Prueba Gratis" : status === "ACTIVE" ? "Activo" : "Suspendido";
   const currentPlanData = plans.find((p) => p.code === currentPlan);
 
-  const handleAction = (planCode: string) => {
-    toast({
-      title: "Pasarela pendiente",
-      description: `La activacion del plan ${planCode} se configurara en la siguiente fase.`,
-    });
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get("paypal");
+    if (!status) return;
+    if (status === "success") {
+      toast({
+        title: "Pago iniciado",
+        description: "Estamos validando tu suscripcion con PayPal. Esto puede tardar unos segundos.",
+      });
+    }
+    if (status === "cancel") {
+      toast({
+        title: "Pago cancelado",
+        description: "No se realizo ningun cargo. Puedes intentarlo nuevamente.",
+        variant: "destructive",
+      });
+    }
+  }, [location.search, toast]);
+
+  const handleUpgrade = async (planCode: "PRO" | "PLUS") => {
+    try {
+      setProcessingPlan(planCode);
+      const data = await createPaypalSubscription(planCode);
+      window.location.href = data.approvalUrl;
+    } catch (error: any) {
+      toast({
+        title: "Error con PayPal",
+        description: error?.message || "No se pudo iniciar el pago",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingPlan(null);
+    }
+  };
+
+  const handleManage = () => {
+    window.open(getPaypalManageUrl(), "_blank");
   };
 
   return (
@@ -71,7 +108,7 @@ const MiPlan = () => {
                 : "Tu plan requiere atencion del administrador."}
           </p>
           <div className="flex gap-3">
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2" onClick={() => handleAction(currentPlan)}>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2" onClick={handleManage}>
               <CreditCard className="w-4 h-4" /> Gestionar plan
             </Button>
           </div>
@@ -105,10 +142,14 @@ const MiPlan = () => {
                 </ul>
                 <Button
                   className={`w-full ${!isCurrent ? "bg-accent text-accent-foreground hover:bg-accent/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
-                  disabled={isCurrent}
-                  onClick={() => handleAction(plan.code)}
+                  disabled={isCurrent || processingPlan === plan.code}
+                  onClick={() => handleUpgrade(plan.code)}
                 >
-                  {isCurrent ? "Plan actual" : `Upgrade a ${plan.code}`}
+                  {isCurrent
+                    ? "Plan actual"
+                    : processingPlan === plan.code
+                      ? "Redirigiendo a PayPal..."
+                      : `Upgrade a ${plan.code}`}
                 </Button>
               </CardContent>
             </Card>
