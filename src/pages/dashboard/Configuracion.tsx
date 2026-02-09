@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +27,7 @@ const Configuracion = () => {
   const { toast } = useToast();
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingSunat, setSavingSunat] = useState(false);
+  const [sunatGuideOpen, setSunatGuideOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
     displayName: "",
     phone: "",
@@ -200,9 +209,13 @@ const Configuracion = () => {
                   />
                 </div>
               </div>
-              <a href="#" className="text-sm text-accent hover:underline">
+              <button
+                type="button"
+                className="text-sm text-accent hover:underline text-left"
+                onClick={() => setSunatGuideOpen(true)}
+              >
                 Como crear tu Usuario Secundario en SUNAT? (2 minutos)
-              </a>
+              </button>
               <Separator />
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleSaveSunat} disabled={savingSunat}>
                 {savingSunat ? "Guardando..." : "Guardar credenciales"}
@@ -211,6 +224,47 @@ const Configuracion = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={sunatGuideOpen} onOpenChange={setSunatGuideOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Como crear tu Usuario Secundario en SUNAT</DialogTitle>
+            <DialogDescription>
+              Guía rápida en SOL. Si sigues estos pasos, en 2-3 minutos tendrás tu usuario listo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-foreground">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>Ingresa a SUNAT Operaciones en Línea (SOL) con tu RUC, usuario y Clave SOL principal.</li>
+              <li>En la barra superior, abre “Administración de usuarios secundarios” y haz clic en “Crear Usuario”.</li>
+              <li>Registra el tipo y número de documento del usuario (si no es DNI, ingresa nombres y apellidos). El correo es opcional.</li>
+              <li>Define el usuario y la clave del secundario y presiona “Siguiente”.</li>
+              <li>Verifica los datos y elige “Asignar Perfiles”. Marca los perfiles u opciones que deseas habilitar.</li>
+              <li>Presiona “Siguiente”, revisa el resumen y confirma con “Grabar”.</li>
+            </ol>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Importante: las acciones del usuario secundario se consideran realizadas por ti.
+            </div>
+            <a
+              href="https://orientacion.sunat.gob.pe/6618-06-creacion-de-usuarios-secundarios"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-accent hover:underline"
+            >
+              Ver guía oficial de SUNAT
+            </a>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setSunatGuideOpen(false)}
+            >
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
