@@ -107,9 +107,15 @@ const MiPlan = () => {
                 ? "Tu plan esta activo y funcionando."
                 : "Tu plan requiere atencion del administrador."}
           </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            Cobro mensual automatico. Puedes cancelar cuando quieras desde PayPal.
+          </p>
           <div className="flex gap-3">
             <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2" onClick={handleManage}>
               <CreditCard className="w-4 h-4" /> Gestionar plan
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleManage}>
+              Cancelar suscripcion
             </Button>
           </div>
         </CardContent>
