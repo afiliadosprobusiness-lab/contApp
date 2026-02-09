@@ -59,6 +59,7 @@ const mapRucType = (value?: string) => {
   if (normalized.includes("SRL")) return "SRL";
   if (normalized.includes("SAA")) return "SAA";
   if (normalized === "SA" || normalized.includes("S.A")) return "SA";
+  if (normalized.includes("JURIDIC")) return "Otro";
   if (normalized.includes("COOPERAT")) return "Cooperativa";
   return "Otro";
 };
@@ -66,8 +67,11 @@ const mapRucType = (value?: string) => {
 const mapRucStatus = (value?: string) => {
   if (!value) return "";
   const normalized = value.toUpperCase();
+  if (normalized.includes("ACTIVO")) return "ACTIVE";
   if (normalized.includes("INACT")) return "INACTIVE";
-  return "ACTIVE";
+  if (normalized.includes("BAJA")) return "INACTIVE";
+  if (normalized.includes("SUSP")) return "INACTIVE";
+  return "INACTIVE";
 };
 
 const MisNegocios = () => {
