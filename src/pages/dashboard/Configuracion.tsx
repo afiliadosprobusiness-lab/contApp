@@ -239,9 +239,19 @@ const Configuracion = () => {
               <li>En la barra superior, abre “Administración de usuarios secundarios” y haz clic en “Crear Usuario”.</li>
               <li>Registra el tipo y número de documento del usuario (si no es DNI, ingresa nombres y apellidos). El correo es opcional.</li>
               <li>Define el usuario y la clave del secundario y presiona “Siguiente”.</li>
-              <li>Verifica los datos y elige “Asignar Perfiles”. Marca los perfiles u opciones que deseas habilitar.</li>
+              <li>
+                Verifica los datos y elige “Asignar Perfiles”. En esa pantalla verás perfiles con opciones de consultas y
+                trámites de SOL. Al seleccionar un perfil se marcan todas sus opciones, y puedes desmarcar las que no deseas.
+              </li>
               <li>Presiona “Siguiente”, revisa el resumen y confirma con “Grabar”.</li>
             </ol>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-2">
+              <p className="font-semibold text-foreground">Recomendado para ContApp</p>
+              <p>Activa solo opciones de consulta relacionadas a comprobantes:</p>
+              <p className="pl-4">Consulta, Comprobantes de pago, Comprobantes electrónicos (CPE/SEE), Emitidos/Recibidos, Ventas, Compras.</p>
+              <p>Evita perfiles de trámite o pago:</p>
+              <p className="pl-4">Declaraciones, Pagos, Fraccionamientos, Devoluciones, Modificar RUC, Trámites.</p>
+            </div>
             <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
               Importante: las acciones del usuario secundario se consideran realizadas por ti.
             </div>
