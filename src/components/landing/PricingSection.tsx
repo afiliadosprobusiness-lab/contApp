@@ -10,10 +10,10 @@ const plans = [
     desc: "Para emprendedores que gestionan hasta 2 negocios.",
     features: [
       "Hasta 2 RUCs / negocios",
-      "SincronizaciÃ³n con SUNAT",
-      "Asistente IA bÃ¡sico",
+      "Sincronización con SUNAT",
+      "Asistente IA básico",
       "Alertas de vencimiento",
-      "DigitalizaciÃ³n de comprobantes",
+      "Digitalización de comprobantes",
       "Soporte por chat",
     ],
     popular: false,
@@ -21,14 +21,14 @@ const plans = [
   {
     name: "Plan PLUS",
     price: "104.90",
-    desc: "Para contadores y empresas con mÃºltiples negocios.",
+    desc: "Para contadores y empresas con múltiples negocios.",
     features: [
       "Negocios ilimitados",
-      "SincronizaciÃ³n con SUNAT",
+      "Sincronización con SUNAT",
       "Asistente IA avanzado",
       "Alertas inteligentes priorizadas",
-      "DigitalizaciÃ³n + OCR avanzado",
-      "GeneraciÃ³n de TXT para SUNAT",
+      "Digitalización + OCR avanzado",
+      "Generación de TXT para SUNAT",
       "Soporte prioritario",
       "Reportes personalizados",
     ],
@@ -50,7 +50,7 @@ const PricingSection = () => {
             Planes y Precios
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg">
-            Prueba cualquier plan <span className="font-semibold text-accent">GRATIS por 5 dÃ­as</span>. Sin tarjeta de crÃ©dito.
+            Prueba cualquier plan <span className="font-semibold text-accent">GRATIS por 5 días</span>. Sin tarjeta de crédito.
           </p>
         </motion.div>
 
@@ -66,7 +66,7 @@ const PricingSection = () => {
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent text-accent-foreground text-xs font-semibold flex items-center gap-1">
-                  <Zap className="w-3 h-3" /> MÃ¡s Popular
+                  <Zap className="w-3 h-3" /> Más Popular
                 </div>
               )}
 

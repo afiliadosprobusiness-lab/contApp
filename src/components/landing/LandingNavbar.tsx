@@ -28,21 +28,21 @@ const LandingNavbar = () => {
 
         <div className="hidden md:flex items-center gap-8">
           <a href="#problema" className="text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={handleScroll("problema")}>El Problema</a>
-          <a href="#solucion" className="text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={handleScroll("solucion")}>SoluciÃ³n</a>
+          <a href="#solucion" className="text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={handleScroll("solucion")}>Solución</a>
           <a href="#precios" className="text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={handleScroll("precios")}>Precios</a>
           <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={handleScroll("faq")}>FAQ</a>
         </div>
 
         <div className="hidden md:flex items-center gap-3">
           <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Iniciar SesiÃ³n</Link>
+            <Link to="/login">Iniciar Sesión</Link>
           </Button>
           <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Link to="/registro">Prueba Gratis</Link>
           </Button>
         </div>
 
-        <button className="md:hidden" onClick={() => setIsOpen(!isOpen)} aria-label="Abrir menu">
+        <button className="md:hidden" onClick={() => setIsOpen(!isOpen)} aria-label="Abrir menú">
           {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
@@ -50,12 +50,12 @@ const LandingNavbar = () => {
       {isOpen && (
         <div className="md:hidden bg-card border-b border-border p-4 space-y-3">
           <a href="#problema" className="block text-sm text-muted-foreground" onClick={handleScroll("problema")}>El Problema</a>
-          <a href="#solucion" className="block text-sm text-muted-foreground" onClick={handleScroll("solucion")}>SoluciÃ³n</a>
+          <a href="#solucion" className="block text-sm text-muted-foreground" onClick={handleScroll("solucion")}>Solución</a>
           <a href="#precios" className="block text-sm text-muted-foreground" onClick={handleScroll("precios")}>Precios</a>
           <a href="#faq" className="block text-sm text-muted-foreground" onClick={handleScroll("faq")}>FAQ</a>
           <div className="flex gap-2 pt-2">
             <Button asChild variant="ghost" className="w-full" size="sm">
-              <Link to="/login" className="flex-1">Iniciar SesiÃ³n</Link>
+              <Link to="/login" className="flex-1">Iniciar Sesión</Link>
             </Button>
             <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="sm">
               <Link to="/registro" className="flex-1">Prueba Gratis</Link>

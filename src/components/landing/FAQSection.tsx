@@ -3,20 +3,20 @@ import { motion } from "framer-motion";
 
 const faqs = [
   {
-    q: "Â¿Es seguro conectar mi cuenta de SUNAT?",
-    a: "SÃ­. Usamos un Usuario Secundario con permisos limitados de solo lectura. Nunca accedemos a tu Clave SOL principal ni podemos hacer declaraciones en tu nombre. Tus datos estÃ¡n encriptados con estÃ¡ndares bancarios.",
+    q: "¿Es seguro conectar mi cuenta de SUNAT?",
+    a: "Sí. Usamos un Usuario Secundario con permisos limitados de solo lectura. Nunca accedemos a tu Clave SOL principal ni podemos hacer declaraciones en tu nombre. Tus datos están encriptados con estándares bancarios.",
   },
   {
-    q: "Â¿QuÃ© pasa despuÃ©s de los 5 dÃ­as de prueba gratis?",
-    a: "Si no eliges un plan, tu cuenta se pausarÃ¡ pero no perderÃ¡s tus datos. PodrÃ¡s reactivarla en cualquier momento eligiendo el Plan PRO o PLUS.",
+    q: "¿Qué pasa después de los 5 días de prueba gratis?",
+    a: "Si no eliges un plan, tu cuenta se pausará pero no perderás tus datos. Podrás reactivarla en cualquier momento eligiendo el Plan PRO o PLUS.",
   },
   {
-    q: "Â¿Puedo cambiar de plan despuÃ©s?",
-    a: "Â¡Claro! Puedes hacer upgrade del Plan PRO al PLUS en cualquier momento. El cambio se aplica inmediatamente y se prorratea el pago.",
+    q: "¿Puedo cambiar de plan después?",
+    a: "¡Claro! Puedes hacer upgrade del Plan PRO al PLUS en cualquier momento. El cambio se aplica inmediatamente y se prorratea el pago.",
   },
   {
-    q: "Â¿Necesito conocimientos de contabilidad?",
-    a: "Para nada. ContApp Pe estÃ¡ diseÃ±ada para emprendedores sin conocimientos contables. La IA te guÃ­a paso a paso y clasifica todo automÃ¡ticamente.",
+    q: "¿Necesito conocimientos de contabilidad?",
+    a: "Para nada. ContApp Pe está diseñada para emprendedores sin conocimientos contables. La IA te guía paso a paso y clasifica todo automáticamente.",
   },
 ];
 

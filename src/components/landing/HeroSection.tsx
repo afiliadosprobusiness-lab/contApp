@@ -29,7 +29,7 @@ const HeroSection = () => {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-light text-accent text-sm font-medium mb-6">
               <Star className="w-4 h-4" />
-              +1,000 emprendedores peruanos confÃ­an en nosotros
+              +1,000 emprendedores peruanos confían en nosotros
             </div>
 
             <h1 className="font-display text-[2.4rem] sm:text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold leading-tight text-primary mb-6">
@@ -39,7 +39,7 @@ const HeroSection = () => {
 
             <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-lg">
               Automatiza tus impuestos, recibe alertas y gestiona tus negocios con IA.
-              Simplifica tu contabilidad en PerÃº.
+              Simplifica tu contabilidad en Perú.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -49,7 +49,7 @@ const HeroSection = () => {
                 className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-glow text-base px-8 h-12 w-full sm:w-auto"
               >
                 <Link to="/registro">
-                  Prueba Gratis por 5 DÃ­as
+                  Prueba Gratis por 5 Días
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Link>
               </Button>
@@ -60,7 +60,7 @@ const HeroSection = () => {
                 className="text-base px-8 h-12 border-primary/20 w-full sm:w-auto"
               >
                 <a href="#solucion" onClick={handleScroll}>
-                  Ver CaracterÃ­sticas
+                  Ver Características
                 </a>
               </Button>
             </div>
@@ -68,7 +68,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap items-center gap-4 mt-8 text-xs sm:text-sm text-muted-foreground">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5">
                 <Shield className="w-4 h-4 text-accent" />
-                Sin tarjeta de crÃ©dito
+                Sin tarjeta de crédito
               </div>
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5">
                 <Shield className="w-4 h-4 text-accent" />
@@ -86,7 +86,7 @@ const HeroSection = () => {
             <div className="relative rounded-2xl overflow-hidden shadow-elevated border border-border">
               <img
                 src={heroDashboard}
-                alt="Dashboard de ContApp Pe mostrando grÃ¡ficos financieros"
+                alt="Dashboard de ContApp Pe mostrando gráficos financieros"
                 className="w-full h-auto"
                 loading="lazy"
               />

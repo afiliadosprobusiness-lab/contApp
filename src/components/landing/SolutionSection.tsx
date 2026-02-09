@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 const features = [
   {
     icon: RefreshCw,
-    title: "SincronizaciÃ³n MÃ¡gica con SUNAT",
-    desc: "Conecta tu Usuario Secundario y jala automÃ¡ticamente tus comprobantes de ventas y compras. Sin copiar y pegar.",
+    title: "Sincronización Mágica con SUNAT",
+    desc: "Conecta tu Usuario Secundario y jala automáticamente tus comprobantes de ventas y compras. Sin copiar y pegar.",
     color: "bg-accent/10 text-accent",
   },
   {
@@ -17,13 +17,13 @@ const features = [
   {
     icon: ScanLine,
     title: "Libre de Papeleos",
-    desc: "Arrastra y suelta tus facturas. Nuestro OCR las lee, clasifica y organiza automÃ¡ticamente.",
+    desc: "Arrastra y suelta tus facturas. Nuestro OCR las lee, clasifica y organiza automáticamente.",
     color: "bg-emerald-light text-accent",
   },
   {
     icon: Bell,
     title: "Alertas Inteligentes",
-    desc: "Nunca mÃ¡s olvides un vencimiento. Te notificamos de declaraciones, pagos y posibles inconsistencias.",
+    desc: "Nunca más olvides un vencimiento. Te notificamos de declaraciones, pagos y posibles inconsistencias.",
     color: "bg-accent/10 text-accent",
   },
 ];
@@ -39,7 +39,7 @@ const SolutionSection = () => {
           className="text-left sm:text-center mb-10 sm:mb-12"
         >
           <h2 className="font-display text-3xl md:text-4xl font-bold text-primary mb-4">
-            Nuestra SoluciÃ³n te da superpoderes
+            Nuestra Solución te da superpoderes
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
             ContApp Pe automatiza todo para que te enfoques en hacer crecer tu negocio.

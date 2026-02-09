@@ -2,8 +2,8 @@ import { Calculator, FileStack, Clock, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const problems = [
-  { icon: Calculator, label: "CÃ¡lculos complejos", desc: "FÃ³rmulas de IGV, renta y deducciones que cambian cada aÃ±o." },
-  { icon: FileStack, label: "MontaÃ±a de papeles", desc: "Facturas, boletas y guÃ­as apilÃ¡ndose sin control." },
+  { icon: Calculator, label: "Cálculos complejos", desc: "Fórmulas de IGV, renta y deducciones que cambian cada año." },
+  { icon: FileStack, label: "Montaña de papeles", desc: "Facturas, boletas y guías apilándose sin control." },
   { icon: Clock, label: "Sin tiempo", desc: "Horas perdidas revisando y organizando comprobantes." },
   { icon: AlertTriangle, label: "Multas inesperadas", desc: "Errores que terminan en sanciones de la SUNAT." },
 ];
@@ -19,10 +19,10 @@ const ProblemSection = () => {
           transition={{ duration: 0.5 }}
         >
           <h2 className="font-display text-3xl md:text-4xl font-bold text-primary mb-4">
-            Â¿Cansado de la burocracia, multas y perder tiempo con la SUNAT?
+            ¿Cansado de la burocracia, multas y perder tiempo con la SUNAT?
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto mb-10 sm:mb-12">
-            Sabemos lo frustrante que es lidiar con la contabilidad en PerÃº. Estos problemas son mÃ¡s comunes de lo que crees.
+            Sabemos lo frustrante que es lidiar con la contabilidad en Perú. Estos problemas son más comunes de lo que crees.
           </p>
         </motion.div>
 
