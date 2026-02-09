@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   TrendingUp,
   TrendingDown,
@@ -57,8 +57,18 @@ const DashboardHome = () => {
   const { user } = useAuth();
   const { selectedBusiness, loading: businessesLoading } = useBusiness();
   const { toast } = useToast();
+  const location = useLocation();
 
   useAdminRedirect();
+
+  useEffect(() => {
+    if (location.hash !== "#contapp-ia") return;
+    const target = document.getElementById("contapp-ia");
+    if (!target) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [location.hash]);
 
   useEffect(() => {
     if (!user?.uid || !selectedBusiness?.id) {
@@ -318,7 +328,7 @@ const DashboardHome = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-card border-border">
+        <Card id="contapp-ia" className="shadow-card border-border">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <BrainCircuit className="w-5 h-5 text-accent" />

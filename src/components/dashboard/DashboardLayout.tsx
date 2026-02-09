@@ -33,6 +33,10 @@ const DashboardLayout = () => {
   const { userProfile } = useAuth();
   const { businesses, selectedBusiness, setSelectedBusinessId, loading: businessesLoading } = useBusiness();
   const { toast } = useToast();
+  const handleAiShortcut = () => {
+    setMobileOpen(false);
+    navigate("/dashboard#contapp-ia");
+  };
 
   const isActive = (path: string) => location.pathname === path;
   const trialDaysLeft = useMemo(() => {
@@ -102,7 +106,11 @@ const DashboardLayout = () => {
               <span className="text-xs font-semibold text-sidebar-foreground">ContApp IA</span>
             </div>
             <p className="text-xs text-sidebar-foreground/60 mb-2">¿Es deducible un pasaje de bus?</p>
-            <Button size="sm" className="w-full h-7 text-xs bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
+            <Button
+              size="sm"
+              className="w-full h-7 text-xs bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
+              onClick={handleAiShortcut}
+            >
               Preguntar
             </Button>
           </div>
