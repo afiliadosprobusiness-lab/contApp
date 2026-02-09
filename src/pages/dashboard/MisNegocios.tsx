@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, Plus, Trash2, Edit, AlertTriangle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,40 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { lookupRuc } from "@/lib/sunat";
+
+const BUSINESS_TYPES = ["Persona Natural", "EIRL", "SAC", "SRL", "SAA", "SA", "Cooperativa", "Otro"];
+
+const normalizeRuc = (value: string) => value.replace(/\D/g, "").slice(0, 11);
+
+const isValidRuc = (ruc: string) => {
+  if (!/^\d{11}$/.test(ruc)) return false;
+  const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = weights.reduce((acc, weight, index) => acc + Number(ruc[index]) * weight, 0);
+  const remainder = 11 - (sum % 11);
+  const expected = remainder === 11 ? 1 : remainder === 10 ? 0 : remainder;
+  return expected === Number(ruc[10]);
+};
+
+const mapRucType = (value?: string) => {
+  if (!value) return "";
+  const normalized = value.toUpperCase();
+  if (normalized.includes("PERSONA")) return "Persona Natural";
+  if (normalized.includes("EIRL")) return "EIRL";
+  if (normalized.includes("SAC")) return "SAC";
+  if (normalized.includes("SRL")) return "SRL";
+  if (normalized.includes("SAA")) return "SAA";
+  if (normalized === "SA" || normalized.includes("S.A")) return "SA";
+  if (normalized.includes("COOPERAT")) return "Cooperativa";
+  return "Otro";
+};
+
+const mapRucStatus = (value?: string) => {
+  if (!value) return "";
+  const normalized = value.toUpperCase();
+  if (normalized.includes("INACT")) return "INACTIVE";
+  return "ACTIVE";
+};
 
 const MisNegocios = () => {
   const { user, userProfile } = useAuth();
@@ -50,6 +84,12 @@ const MisNegocios = () => {
     type: "",
     status: "ACTIVE",
   });
+  const [rucLookup, setRucLookup] = useState<{ status: "idle" | "loading" | "success" | "error"; message: string }>(
+    {
+      status: "idle",
+      message: "",
+    }
+  );
 
   const planLimit = useMemo(() => {
     if (userProfile?.role === "ADMIN") return Number.POSITIVE_INFINITY;
@@ -63,6 +103,7 @@ const MisNegocios = () => {
 
   const resetForm = () => {
     setForm({ ruc: "", name: "", type: "", status: "ACTIVE" });
+    setRucLookup({ status: "idle", message: "" });
     setEditingId(null);
   };
 
@@ -81,12 +122,61 @@ const MisNegocios = () => {
     setForm({
       ruc: business.ruc,
       name: business.name,
-      type: business.type,
+      type: business.type === "Sin tipo" ? "" : business.type,
       status: business.status,
     });
+    setRucLookup({ status: "idle", message: "" });
     setEditingId(id);
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const ruc = form.ruc;
+
+    if (!ruc) {
+      setRucLookup({ status: "idle", message: "" });
+      return;
+    }
+
+    if (ruc.length < 11) {
+      setRucLookup({ status: "idle", message: "Ingresa 11 digitos para validar el RUC." });
+      return;
+    }
+
+    if (!isValidRuc(ruc)) {
+      setRucLookup({ status: "error", message: "RUC invalido. Revisa los digitos." });
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(async () => {
+      setRucLookup({ status: "loading", message: "Buscando datos del RUC en SUNAT..." });
+      try {
+        const response = await lookupRuc({ ruc });
+        if (cancelled) return;
+        const data = response?.data ?? response;
+        setForm((prev) => ({
+          ...prev,
+          name: data?.name?.trim() ? data.name : prev.name,
+          type: mapRucType(data?.type) || prev.type,
+          status: mapRucStatus(data?.status) || prev.status,
+        }));
+        setRucLookup({ status: "success", message: "Datos encontrados. Puedes editar si es necesario." });
+      } catch (error) {
+        if (cancelled) return;
+        setRucLookup({
+          status: "error",
+          message: error instanceof Error ? error.message : "No se pudo consultar el RUC.",
+        });
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [dialogOpen, form.ruc]);
 
   const handleSave = async () => {
     if (!user?.uid) return;
@@ -94,6 +184,14 @@ const MisNegocios = () => {
       toast({
         title: "Datos incompletos",
         description: "RUC y nombre son obligatorios",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isValidRuc(form.ruc.trim())) {
+      toast({
+        title: "RUC invalido",
+        description: "Ingresa un RUC valido de 11 digitos",
         variant: "destructive",
       });
       return;
@@ -221,12 +319,37 @@ const MisNegocios = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display">{editingId ? "Editar negocio" : "Nuevo negocio"}</DialogTitle>
-            <DialogDescription>Completa los datos del RUC que deseas gestionar.</DialogDescription>
+            <DialogDescription>
+              Ingresa el RUC y completaremos los datos disponibles automaticamente. Puedes editarlos si lo necesitas.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>RUC</Label>
-              <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
+              <div className="relative">
+                <Input
+                  value={form.ruc}
+                  onChange={(e) => setForm((prev) => ({ ...prev, ruc: normalizeRuc(e.target.value) }))}
+                  placeholder="Ingresa 11 digitos"
+                  className={rucLookup.status === "loading" ? "pr-9" : undefined}
+                />
+                {rucLookup.status === "loading" ? (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
+              {rucLookup.message ? (
+                <p
+                  className={`text-xs ${
+                    rucLookup.status === "error"
+                      ? "text-destructive"
+                      : rucLookup.status === "success"
+                        ? "text-emerald-600"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {rucLookup.message}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>Nombre o razon social</Label>
@@ -234,7 +357,18 @@ const MisNegocios = () => {
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} />
+              <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el tipo de negocio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Estado</Label>

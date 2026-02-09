@@ -42,3 +42,7 @@ export const saveSunatCredentials = async (payload: {
 export const syncSunat = async (payload: { businessId: string; year: number; month: number }) => {
   return postJson("/sunat/sync", payload);
 };
+
+export const lookupRuc = async (payload: { ruc: string }) => {
+  return postJson("/sunat/ruc", payload);
+};
