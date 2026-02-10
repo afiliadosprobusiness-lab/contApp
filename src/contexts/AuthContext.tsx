@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { onAuthChange, UserProfile } from "@/lib/auth";
+import { ensureUserProfile, onAuthChange, UserProfile } from "@/lib/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +34,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const bootstrapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bootstrapInFlight = useRef(false);
+  const BOOTSTRAP_KEY_PREFIX = "contapp_bootstrap_user_";
+
+  const clearBootstrapTimer = () => {
+    if (bootstrapTimer.current) {
+      clearTimeout(bootstrapTimer.current);
+      bootstrapTimer.current = null;
+    }
+  };
+
+  const bootstrapProfile = async (firebaseUser: User, attempt = 0) => {
+    if (!firebaseUser || bootstrapInFlight.current) return;
+    bootstrapInFlight.current = true;
+
+    try {
+      await ensureUserProfile(firebaseUser);
+      localStorage.setItem(`${BOOTSTRAP_KEY_PREFIX}${firebaseUser.uid}`, String(Date.now()));
+      clearBootstrapTimer();
+    } catch (error) {
+      if (attempt < 2) {
+        const delay = 2000 * (attempt + 1);
+        clearBootstrapTimer();
+        bootstrapTimer.current = setTimeout(() => {
+          bootstrapProfile(firebaseUser, attempt + 1);
+        }, delay);
+      }
+    } finally {
+      bootstrapInFlight.current = false;
+    }
+  };
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -49,8 +80,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (!firebaseUser) {
         setUserProfile(null);
+        clearBootstrapTimer();
         setLoading(false);
         return;
+      }
+
+      const bootstrapKey = `${BOOTSTRAP_KEY_PREFIX}${firebaseUser.uid}`;
+      if (!localStorage.getItem(bootstrapKey)) {
+        bootstrapProfile(firebaseUser, 0);
       }
 
       const profileRef = doc(db, "users", firebaseUser.uid);

@@ -103,30 +103,7 @@ export const loginWithGoogle = async (): Promise<User> => {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
 
-        // Verificar si es nuevo usuario
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-
-        if (!userDoc.exists()) {
-            // Determinar si es admin
-            const role = isAdminEmail(user.email || '') ? 'ADMIN' : 'USER';
-
-            // Crear perfil para nuevo usuario de Google
-            const trialEndsAt = new Date();
-            trialEndsAt.setDate(trialEndsAt.getDate() + 5);
-
-            await setDoc(doc(db, 'users', user.uid), {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
-                plan: role === 'ADMIN' ? 'PLUS' : 'PRO',
-                role: role,
-                status: role === 'ADMIN' ? 'ACTIVE' : 'TRIAL',
-                trialEndsAt: role === 'ADMIN' ? null : trialEndsAt,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-        }
+        await ensureUserProfile(user);
 
         return user;
     } catch (error: any) {
@@ -177,6 +154,33 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
         console.error('Error obteniendo perfil:', error);
         return null;
     }
+};
+
+/**
+ * Asegura que exista un perfil de usuario en Firestore
+ */
+export const ensureUserProfile = async (user: User): Promise<void> => {
+    if (!user) return;
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) return;
+
+    const role = isAdminEmail(user.email || '') ? 'ADMIN' : 'USER';
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 5);
+
+    await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        plan: role === 'ADMIN' ? 'PLUS' : 'PRO',
+        role: role,
+        status: role === 'ADMIN' ? 'ACTIVE' : 'TRIAL',
+        trialEndsAt: role === 'ADMIN' ? null : trialEndsAt,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    });
 };
 
 /**
