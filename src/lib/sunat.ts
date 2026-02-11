@@ -1,7 +1,9 @@
 import { getAuth } from "firebase/auth";
 
 const getApiBase = () => {
-  return import.meta.env.VITE_SUNAT_API_URL || "http://localhost:8080";
+  const raw = import.meta.env.VITE_SUNAT_API_URL || "http://localhost:8080";
+  const cleaned = String(raw).trim();
+  return cleaned.endsWith("/") ? cleaned.slice(0, -1) : cleaned;
 };
 
 const getAuthToken = async () => {

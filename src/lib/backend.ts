@@ -2,7 +2,9 @@ import { getAuth } from "firebase/auth";
 
 const normalizeBase = (value?: string) => {
   if (!value) return "";
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+  const cleaned = value.trim();
+  if (!cleaned) return "";
+  return cleaned.endsWith("/") ? cleaned.slice(0, -1) : cleaned;
 };
 
 const getBaseUrl = () => normalizeBase(import.meta.env.VITE_BACKEND_URL as string | undefined);
