@@ -31,9 +31,14 @@ export interface UserProfile {
 /**
  * Verificar si un email es el del super admin
  */
+const DEFAULT_ADMIN_EMAIL = 'afiliadosprobusiness@gmail.com';
+
 const isAdminEmail = (email: string): boolean => {
-    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-    return email.toLowerCase() === adminEmail?.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return false;
+
+    const configured = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+    return [configured, DEFAULT_ADMIN_EMAIL].includes(normalizedEmail);
 };
 
 /**
@@ -163,9 +168,23 @@ export const ensureUserProfile = async (user: User): Promise<void> => {
     if (!user) return;
 
     const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (userDoc.exists()) return;
+    const isAdmin = isAdminEmail(user.email || '');
+    if (userDoc.exists()) {
+        const data = userDoc.data();
+        // Si el correo ahora es superadmin, elevamos permisos sin recrear el usuario.
+        if (isAdmin && data.role !== 'ADMIN') {
+            await setDoc(doc(db, 'users', user.uid), {
+                role: 'ADMIN',
+                plan: 'PLUS',
+                status: 'ACTIVE',
+                trialEndsAt: null,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        }
+        return;
+    }
 
-    const role = isAdminEmail(user.email || '') ? 'ADMIN' : 'USER';
+    const role = isAdmin ? 'ADMIN' : 'USER';
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 5);
 
