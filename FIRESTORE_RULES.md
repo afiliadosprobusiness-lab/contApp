@@ -12,6 +12,12 @@ service cloud.firestore {
       return request.auth != null && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
     }
+
+    // Evita borrar la cuenta superadmin o cualquier cuenta con rol ADMIN
+    function isProtectedAdminUser() {
+      return resource.data.role == 'ADMIN' ||
+             resource.data.email == 'afiliadosprobusiness@gmail.com';
+    }
     
     // Users collection
     match /users/{userId} {
@@ -26,8 +32,8 @@ service cloud.firestore {
       allow update: if request.auth != null && 
                        (request.auth.uid == userId || isAdmin());
       
-      // Eliminar: solo admin
-      allow delete: if isAdmin();
+      // Eliminar: solo admin, pero nunca cuentas ADMIN/superadmin
+      allow delete: if isAdmin() && !isProtectedAdminUser();
     }
     
     // Businesses collection (nested under users)

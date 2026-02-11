@@ -10,11 +10,19 @@ import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/auth";
 import { useAuth } from "@/contexts/AuthContext";
 
+const DEFAULT_ADMIN_EMAIL = "afiliadosprobusiness@gmail.com";
+
 const Superadmin = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { userProfile } = useAuth();
+  const configuredAdminEmail = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
+
+  const isProtectedSuperadmin = (user: Pick<UserProfile, "role" | "email">) => {
+    const email = (user.email || "").trim().toLowerCase();
+    return user.role === "ADMIN" || [configuredAdminEmail, DEFAULT_ADMIN_EMAIL].includes(email);
+  };
 
   useEffect(() => {
     const usersQuery = query(collection(db, "users"));
@@ -124,7 +132,18 @@ const Superadmin = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userEmail: string) => {
+  const handleDeleteUser = async (targetUser: UserProfile) => {
+    if (isProtectedSuperadmin(targetUser)) {
+      toast({
+        title: "Accion no permitida",
+        description: "No se puede eliminar la cuenta superadmin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const userId = targetUser.uid;
+    const userEmail = targetUser.email;
     if (!confirm(`Estas seguro de eliminar al usuario ${userEmail}?`)) {
       return;
     }
@@ -267,13 +286,13 @@ const Superadmin = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleDeleteUser(user.uid, user.email)}
+                          onClick={() => handleDeleteUser(user)}
                           title="Eliminar usuario"
-                          disabled={user.role === "ADMIN"}
+                          disabled={isProtectedSuperadmin(user)}
                         >
                           <Trash2
                             className={`w-4 h-4 ${
-                              user.role === "ADMIN" ? "text-muted-foreground/30" : "text-destructive"
+                              isProtectedSuperadmin(user) ? "text-muted-foreground/30" : "text-destructive"
                             }`}
                           />
                         </Button>
