@@ -1,20 +1,28 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
+const DEFAULT_ADMIN_EMAIL = "afiliadosprobusiness@gmail.com";
 
 /**
- * Hook para redirigir automáticamente al panel de admin si el usuario es administrador
+ * Redirige al panel admin cuando el correo o el rol corresponde a superadmin.
  */
 export const useAdminRedirect = () => {
-    const { userProfile, loading } = useAuth();
-    const navigate = useNavigate();
+  const { user, userProfile, loading } = useAuth();
+  const navigate = useNavigate();
+  const configuredAdminEmail = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
 
-    useEffect(() => {
-        if (!loading && userProfile) {
-            // Si el usuario es admin y está en el dashboard normal, redirigir a admin
-            if (userProfile.role === 'ADMIN' && window.location.pathname === '/dashboard') {
-                navigate('/dashboard/admin', { replace: true });
-            }
-        }
-    }, [userProfile, loading, navigate]);
+  useEffect(() => {
+    if (loading) return;
+
+    const email = (user?.email || userProfile?.email || "").trim().toLowerCase();
+    const isAdminByRole = userProfile?.role === "ADMIN";
+    const isAdminByEmail = !!email && [configuredAdminEmail, DEFAULT_ADMIN_EMAIL].includes(email);
+    const isAdmin = isAdminByRole || isAdminByEmail;
+
+    if (isAdmin && window.location.pathname === "/dashboard") {
+      navigate("/dashboard/admin", { replace: true });
+    }
+  }, [user, userProfile, loading, navigate, configuredAdminEmail]);
 };
+

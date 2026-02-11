@@ -30,9 +30,14 @@ const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const { businesses, selectedBusiness, setSelectedBusinessId, loading: businessesLoading } = useBusiness();
   const { toast } = useToast();
+  const configuredAdminEmail = (import.meta.env.VITE_ADMIN_EMAIL || "").trim().toLowerCase();
+  const defaultAdminEmail = "afiliadosprobusiness@gmail.com";
+  const currentEmail = (user?.email || userProfile?.email || "").trim().toLowerCase();
+  const isAdminByEmail = !!currentEmail && [configuredAdminEmail, defaultAdminEmail].includes(currentEmail);
+  const isAdmin = userProfile?.role === "ADMIN" || isAdminByEmail;
   const handleAiShortcut = () => {
     setMobileOpen(false);
     navigate("/dashboard#contapp-ia");
@@ -64,7 +69,7 @@ const DashboardLayout = () => {
 
   const SidebarContent = () => {
     // Filtrar items del menú según el rol del usuario
-    const menuItems = userProfile?.role === 'ADMIN'
+    const menuItems = isAdmin
       ? [{ label: "Gestión de Usuarios", icon: ShieldCheck, path: "/dashboard/admin" }]
       : navItems;
 
@@ -99,7 +104,7 @@ const DashboardLayout = () => {
         </nav>
 
         {/* AI widget mini - Solo para usuarios normales */}
-        {!collapsed && userProfile?.role !== 'ADMIN' && (
+        {!collapsed && !isAdmin && (
           <div className="mx-3 mb-3 p-3 rounded-xl bg-sidebar-accent border border-sidebar-border">
             <div className="flex items-center gap-2 mb-2">
               <BrainCircuit className="w-4 h-4 text-sidebar-primary" />
@@ -159,7 +164,7 @@ const DashboardLayout = () => {
           </button>
 
           {/* Business selector - Solo para usuarios normales */}
-          {userProfile?.role !== 'ADMIN' && (
+          {!isAdmin && (
             businessesLoading ? (
               <Button variant="outline" size="sm" className="gap-2 max-w-[220px]" disabled>
                 <Building2 className="w-4 h-4 text-accent shrink-0" />
@@ -209,7 +214,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Trial banner - Solo para usuarios normales */}
-        {userProfile?.role !== 'ADMIN' && userProfile?.status === "TRIAL" && (
+        {!isAdmin && userProfile?.status === "TRIAL" && (
           <Alert className="rounded-none border-x-0 border-t-0 bg-accent/10 border-accent/20">
             <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-sm">
               <span className="text-accent font-medium">
