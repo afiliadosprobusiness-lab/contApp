@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { ShieldCheck, UserCheck, UserX, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,89 +8,124 @@ import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "fireba
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Superadmin = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { userProfile } = useAuth();
 
-  // Escuchar cambios en tiempo real de Firestore
   useEffect(() => {
     const usersQuery = query(collection(db, "users"));
 
-    const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          uid: doc.id,
-          email: data.email,
-          displayName: data.displayName,
-          plan: data.plan,
-          role: data.role,
-          status: data.status,
-          trialEndsAt: data.trialEndsAt?.toDate(),
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate()
-        } as UserProfile;
-      });
+    const unsubscribe = onSnapshot(
+      usersQuery,
+      (snapshot) => {
+        const usersData = snapshot.docs.map((snapshotDoc) => {
+          const data = snapshotDoc.data();
+          return {
+            uid: snapshotDoc.id,
+            email: data.email,
+            displayName: data.displayName,
+            plan: data.plan,
+            role: data.role,
+            status: data.status,
+            trialEndsAt: data.trialEndsAt?.toDate?.(),
+            createdAt: data.createdAt?.toDate?.(),
+            updatedAt: data.updatedAt?.toDate?.(),
+          } as UserProfile;
+        });
 
-      setUsers(usersData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error al cargar usuarios:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los usuarios",
-        variant: "destructive",
-      });
-      setLoading(false);
-    });
+        setUsers(usersData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error al cargar usuarios:", error);
 
-    // Cleanup
+        const code = (error as { code?: string } | undefined)?.code || "";
+        if (code.includes("permission-denied")) {
+          toast({
+            title: "Permisos de Firestore",
+            description:
+              "Firestore nego acceso. Publica las reglas de ContApp para que el superadmin pueda leer users.",
+            variant: "destructive",
+          });
+        } else if (code.includes("blocked-by-client")) {
+          toast({
+            title: "Bloqueo del navegador",
+            description: "Una extension esta bloqueando Firestore. Desactiva el bloqueador para este sitio.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los usuarios.",
+            variant: "destructive",
+          });
+        }
+
+        if (userProfile?.uid) {
+          setUsers([
+            {
+              uid: userProfile.uid,
+              email: userProfile.email,
+              displayName: userProfile.displayName || "Superadmin",
+              plan: userProfile.plan,
+              role: userProfile.role,
+              status: userProfile.status || "ACTIVE",
+              trialEndsAt: userProfile.trialEndsAt,
+              createdAt: userProfile.createdAt,
+              updatedAt: userProfile.updatedAt,
+            },
+          ]);
+        }
+
+        setLoading(false);
+      }
+    );
+
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, userProfile]);
 
-  // Activar usuario
   const handleActivateUser = async (userId: string) => {
     try {
       await updateDoc(doc(db, "users", userId), {
-        status: "ACTIVE"
+        status: "ACTIVE",
       });
       toast({
         title: "Usuario activado",
-        description: "El usuario ha sido activado correctamente",
+        description: "El usuario ha sido activado correctamente.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "No se pudo activar el usuario",
+        description: "No se pudo activar el usuario.",
         variant: "destructive",
       });
     }
   };
 
-  // Suspender usuario
   const handleSuspendUser = async (userId: string) => {
     try {
       await updateDoc(doc(db, "users", userId), {
-        status: "SUSPENDED"
+        status: "SUSPENDED",
       });
       toast({
         title: "Usuario suspendido",
-        description: "El usuario ha sido suspendido",
+        description: "El usuario ha sido suspendido.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "No se pudo suspender el usuario",
+        description: "No se pudo suspender el usuario.",
         variant: "destructive",
       });
     }
   };
 
-  // Eliminar usuario
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (!confirm(`¿Estás seguro de eliminar al usuario ${userEmail}?`)) {
+    if (!confirm(`Estas seguro de eliminar al usuario ${userEmail}?`)) {
       return;
     }
 
@@ -98,29 +133,27 @@ const Superadmin = () => {
       await deleteDoc(doc(db, "users", userId));
       toast({
         title: "Usuario eliminado",
-        description: "El usuario ha sido eliminado de la base de datos",
+        description: "El usuario ha sido eliminado de la base de datos.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el usuario",
+        description: "No se pudo eliminar el usuario.",
         variant: "destructive",
       });
     }
   };
 
-  // Calcular estadísticas
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.status === "ACTIVE").length;
-  const trialUsers = users.filter(u => u.status === "TRIAL").length;
+  const activeUsers = users.filter((u) => u.status === "ACTIVE").length;
+  const trialUsers = users.filter((u) => u.status === "TRIAL").length;
 
-  // Formatear fecha
   const formatDate = (date: Date | undefined) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("es-PE", {
       year: "numeric",
       month: "2-digit",
-      day: "2-digit"
+      day: "2-digit",
     });
   };
 
@@ -138,10 +171,9 @@ const Superadmin = () => {
         <h1 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="w-6 h-6 text-accent" /> Superadmin
         </h1>
-        <p className="text-sm text-muted-foreground">Panel de administración - Datos en tiempo real</p>
+        <p className="text-sm text-muted-foreground">Panel de administracion - Datos en tiempo real</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid sm:grid-cols-3 gap-4">
         <Card className="shadow-card border-border">
           <CardContent className="p-5">
@@ -163,16 +195,13 @@ const Superadmin = () => {
         </Card>
       </div>
 
-      {/* Tabla de usuarios */}
       <Card className="shadow-card border-border">
         <CardHeader>
           <CardTitle className="font-display text-lg">Usuarios Registrados</CardTitle>
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No hay usuarios registrados aún
-            </div>
+            <div className="text-center py-8 text-muted-foreground">No hay usuarios registrados aun.</div>
           ) : (
             <Table>
               <TableHeader>
@@ -201,17 +230,19 @@ const Superadmin = () => {
                       <Badge variant="secondary">{user.plan}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={
-                        user.status === "ACTIVE" ? "bg-emerald-light text-accent" :
-                          user.status === "TRIAL" ? "bg-primary/10 text-primary" :
-                            "bg-destructive/10 text-destructive"
-                      }>
+                      <Badge
+                        className={
+                          user.status === "ACTIVE"
+                            ? "bg-emerald-light text-accent"
+                            : user.status === "TRIAL"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-destructive/10 text-destructive"
+                        }
+                      >
                         {user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(user.createdAt)}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
@@ -240,7 +271,11 @@ const Superadmin = () => {
                           title="Eliminar usuario"
                           disabled={user.role === "ADMIN"}
                         >
-                          <Trash2 className={`w-4 h-4 ${user.role === "ADMIN" ? "text-muted-foreground/30" : "text-destructive"}`} />
+                          <Trash2
+                            className={`w-4 h-4 ${
+                              user.role === "ADMIN" ? "text-muted-foreground/30" : "text-destructive"
+                            }`}
+                          />
                         </Button>
                       </div>
                     </TableCell>
