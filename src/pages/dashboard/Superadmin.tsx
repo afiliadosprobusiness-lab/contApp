@@ -1,16 +1,25 @@
 ﻿import { useState, useEffect } from "react";
-import { ShieldCheck, UserCheck, UserX, Trash2, Loader2 } from "lucide-react";
+import { ShieldCheck, MoreVertical, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/auth";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const DEFAULT_ADMIN_EMAIL = "afiliadosprobusiness@gmail.com";
+const TRIAL_DAYS = 5;
 
 const Superadmin = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -96,19 +105,64 @@ const Superadmin = () => {
     return () => unsubscribe();
   }, [toast, userProfile]);
 
-  const handleActivateUser = async (userId: string) => {
+  const handleActivatePlan = async (userId: string, plan: "PRO" | "PLUS") => {
     try {
       await updateDoc(doc(db, "users", userId), {
+        plan,
         status: "ACTIVE",
+        trialEndsAt: null,
+        updatedAt: serverTimestamp(),
       });
       toast({
-        title: "Usuario activado",
-        description: "El usuario ha sido activado correctamente.",
+        title: "Plan activado",
+        description: `El usuario fue activado con plan ${plan}.`,
       });
     } catch {
       toast({
         title: "Error",
-        description: "No se pudo activar el usuario.",
+        description: "No se pudo activar el plan del usuario.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleChangePlanOnly = async (userId: string, plan: "PRO" | "PLUS") => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        plan,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Plan actualizado",
+        description: `El plan fue cambiado a ${plan} (sin tocar el estado).`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar el plan del usuario.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkTrial = async (userId: string) => {
+    try {
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+
+      await updateDoc(doc(db, "users", userId), {
+        status: "TRIAL",
+        trialEndsAt,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Trial activado",
+        description: `El usuario quedo en TRIAL por ${TRIAL_DAYS} dias. El plan no se modifico.`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo marcar el usuario como TRIAL.",
         variant: "destructive",
       });
     }
@@ -118,6 +172,8 @@ const Superadmin = () => {
     try {
       await updateDoc(doc(db, "users", userId), {
         status: "SUSPENDED",
+        trialEndsAt: null,
+        updatedAt: serverTimestamp(),
       });
       toast({
         title: "Usuario suspendido",
@@ -183,6 +239,13 @@ const Superadmin = () => {
       </div>
     );
   }
+
+  const MenuItem = ({ title, subtitle }: { title: string; subtitle: string }) => (
+    <div className="flex flex-col">
+      <span className="text-sm font-medium">{title}</span>
+      <span className="text-xs text-muted-foreground">{subtitle}</span>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -264,24 +327,57 @@ const Superadmin = () => {
                     <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleActivateUser(user.uid)}
-                          title="Activar usuario"
-                        >
-                          <UserCheck className="w-4 h-4 text-accent" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleSuspendUser(user.uid)}
-                          title="Suspender usuario"
-                        >
-                          <UserX className="w-4 h-4 text-muted-foreground" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Acciones"
+                              disabled={isProtectedSuperadmin(user)}
+                            >
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-80">
+                            <DropdownMenuLabel>Acciones de usuario</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem onSelect={() => handleActivatePlan(user.uid, "PRO")}>
+                              <MenuItem title="Activar plan PRO" subtitle="Pasa el estado a Activo y asigna PRO." />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleActivatePlan(user.uid, "PLUS")}>
+                              <MenuItem title="Activar plan PLUS" subtitle="Pasa el estado a Activo y asigna PLUS." />
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem onSelect={() => handleChangePlanOnly(user.uid, "PRO")}>
+                              <MenuItem
+                                title="Cambiar plan a PRO (sin tocar estado)"
+                                subtitle="Solo cambia el plan. No cambia Trial/Activo/Suspendido."
+                              />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleChangePlanOnly(user.uid, "PLUS")}>
+                              <MenuItem
+                                title="Cambiar plan a PLUS (sin tocar estado)"
+                                subtitle="Solo cambia el plan. No cambia Trial/Activo/Suspendido."
+                              />
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem onSelect={() => handleMarkTrial(user.uid)}>
+                              <MenuItem
+                                title="Marcar como Trial"
+                                subtitle={`Cambia el estado a Trial (${TRIAL_DAYS} dias). El plan queda igual.`}
+                              />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleSuspendUser(user.uid)}>
+                              <MenuItem title="Suspender acceso" subtitle="Bloquea el acceso sin eliminar la cuenta." />
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                           variant="ghost"
                           size="icon"
