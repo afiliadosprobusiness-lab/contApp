@@ -16,6 +16,7 @@ import {
   createBillingInvoice,
   emitBillingCpe,
   emitBillingCpeProd,
+  getBillingCdrZip,
   listBillingInvoices,
   listBillingPayments,
   markBillingInvoicePaid,
@@ -86,6 +87,20 @@ const toDate = (x?: string | null) => {
   if (!x) return null;
   const parsed = new Date(x);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const downloadBase64Zip = ({ filename, base64 }: { filename: string; base64: string }) => {
+  if (typeof window === "undefined") return;
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: "application/zip" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "cdr.zip";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 };
 
 const effective = (invoice: Invoice): PayStatus => {
@@ -441,6 +456,28 @@ const Facturacion = () => {
     }
   };
 
+  const viewCdrForInvoice = async (invoice: Invoice) => {
+    if (!selectedBusiness?.id) return;
+    try {
+      setEmittingCpeId(invoice.id);
+      const response = await getBillingCdrZip({
+        businessId: selectedBusiness.id,
+        invoiceId: invoice.id,
+        env: "PROD",
+      });
+      downloadBase64Zip({ filename: response.filename, base64: response.zipBase64 });
+      toast({ title: "CDR descargado", description: response.filename });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "No se pudo descargar el CDR.",
+        variant: "destructive",
+      });
+    } finally {
+      setEmittingCpeId(null);
+    }
+  };
+
   const savePayment = async () => {
     if (!user?.uid || !selectedBusiness?.id || !payInvoice) return;
     const live = invoices.find((x) => x.id === payInvoice.id) || payInvoice;
@@ -501,6 +538,7 @@ const Facturacion = () => {
     : certStatus.state === "missing"
       ? "Falta el certificado digital (.pfx/.p12). Configuralo en Configuracion."
       : null;
+  const prodAccepted = (invoice: Invoice) => effectiveCpeStatus(invoice) === "ACEPTADO";
 
   return (
     <div className="space-y-6">
@@ -593,28 +631,46 @@ const Facturacion = () => {
                               "Validar BETA"
                             )}
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => emitCpeProdForInvoice(x)}
-                            disabled={!cpeReady || effectiveCpeBetaStatus(x) !== "ACEPTADO" || emittingCpeId === x.id}
-                            title={
-                              !cpeReady
-                                ? cpeBlockReason || "Configura SUNAT para emitir CPE"
-                                : effectiveCpeBetaStatus(x) !== "ACEPTADO"
-                                  ? "Primero valida en BETA (debe quedar ACEPTADO)"
-                                  : undefined
-                            }
-                          >
-                            {emittingCpeId === x.id ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                Emitiendo
-                              </span>
-                            ) : (
-                              "Emitir PROD"
-                            )}
-                          </Button>
+                          {prodAccepted(x) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => viewCdrForInvoice(x)}
+                              disabled={emittingCpeId === x.id}
+                            >
+                              {emittingCpeId === x.id ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Descargando
+                                </span>
+                              ) : (
+                                "Ver CDR"
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => emitCpeProdForInvoice(x)}
+                              disabled={!cpeReady || effectiveCpeBetaStatus(x) !== "ACEPTADO" || emittingCpeId === x.id}
+                              title={
+                                !cpeReady
+                                  ? cpeBlockReason || "Configura SUNAT para emitir CPE"
+                                  : effectiveCpeBetaStatus(x) !== "ACEPTADO"
+                                    ? "Primero valida en BETA (debe quedar ACEPTADO)"
+                                    : undefined
+                              }
+                            >
+                              {emittingCpeId === x.id ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Emitiendo
+                                </span>
+                              ) : (
+                                "Emitir PROD"
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

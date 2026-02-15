@@ -171,3 +171,10 @@ export const emitBillingCpeProd = (payload: { businessId: string; invoiceId: str
     invoice: BillingInvoice;
   }>(`/billing/invoices/${encodeURIComponent(invoiceId)}/emit-cpe-prod`, { businessId });
 };
+
+export const getBillingCdrZip = (params: { businessId: string; invoiceId: string; env: "BETA" | "PROD" }) => {
+  const { invoiceId, businessId, env } = params;
+  return getWithAuth<{ ok: true; filename: string; zipBase64: string }>(
+    `/billing/invoices/${encodeURIComponent(invoiceId)}/cdr${toQuery({ businessId, env })}`
+  );
+};
