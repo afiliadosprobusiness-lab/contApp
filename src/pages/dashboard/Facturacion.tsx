@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   createBillingInvoice,
   emitBillingCpe,
+  emitBillingCpeProd,
   listBillingInvoices,
   listBillingPayments,
   markBillingInvoicePaid,
@@ -51,6 +52,10 @@ type Invoice = {
   cpeCode?: string | number | null;
   cpeDescription?: string | null;
   cpeError?: string | null;
+  cpeBetaStatus?: Exclude<CpeStatus, "NO_ENVIADO"> | null;
+  cpeBetaCode?: string | number | null;
+  cpeBetaDescription?: string | null;
+  cpeBetaError?: string | null;
 };
 type Payment = { id: string; amount: number; paymentDate?: Date; note?: string; createdAt?: Date };
 type ItemForm = { description: string; quantity: string; unitPrice: string; taxRate: string };
@@ -112,6 +117,14 @@ const cpeBadgeClass = (status: CpeStatus) => {
   return "bg-slate-100 text-slate-700";
 };
 
+const effectiveCpeBetaStatus = (invoice: Invoice): CpeStatus => {
+  const status = String(invoice.cpeBetaStatus || "").toUpperCase();
+  if (status === "ACEPTADO") return "ACEPTADO";
+  if (status === "RECHAZADO") return "RECHAZADO";
+  if (status === "ERROR") return "ERROR";
+  return "NO_ENVIADO";
+};
+
 const Facturacion = () => {
   const { user } = useAuth();
   const { selectedBusiness, loading: businessLoading } = useBusiness();
@@ -168,6 +181,10 @@ const Facturacion = () => {
         cpeCode: x.cpeCode ?? null,
         cpeDescription: x.cpeDescription ?? null,
         cpeError: x.cpeError || null,
+        cpeBetaStatus: (x.cpeBetaStatus || null) as Exclude<CpeStatus, "NO_ENVIADO"> | null,
+        cpeBetaCode: x.cpeBetaCode ?? null,
+        cpeBetaDescription: x.cpeBetaDescription ?? null,
+        cpeBetaError: x.cpeBetaError || null,
       })) as Invoice[];
       setInvoices(rows);
     } catch (error: any) {
@@ -369,7 +386,7 @@ const Facturacion = () => {
     }
   };
 
-  const emitCpeForInvoice = async (invoice: Invoice) => {
+  const validateCpeForInvoice = async (invoice: Invoice) => {
     if (!user?.uid || !selectedBusiness?.id) return;
     try {
       setEmittingCpeId(invoice.id);
@@ -380,13 +397,43 @@ const Facturacion = () => {
       await loadInvoices();
       const status = response.result?.status || "RECHAZADO";
       toast({
-        title: "CPE procesado",
+        title: "Validacion BETA lista",
         description: `${invoice.serie}-${invoice.numero}: ${status}.`,
       });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error?.message || "No se pudo emitir CPE.",
+        description: error?.message || "No se pudo validar CPE (BETA).",
+        variant: "destructive",
+      });
+    } finally {
+      setEmittingCpeId(null);
+    }
+  };
+
+  const emitCpeProdForInvoice = async (invoice: Invoice) => {
+    if (!user?.uid || !selectedBusiness?.id) return;
+    const ok = typeof window !== "undefined"
+      ? window.confirm(`Vas a emitir en SUNAT (PROD) el comprobante ${invoice.serie}-${invoice.numero}. Esto cuenta como emision real. Continuar?`)
+      : true;
+    if (!ok) return;
+
+    try {
+      setEmittingCpeId(invoice.id);
+      const response = await emitBillingCpeProd({
+        businessId: selectedBusiness.id,
+        invoiceId: invoice.id,
+      });
+      await loadInvoices();
+      const status = response.result?.status || "RECHAZADO";
+      toast({
+        title: "Emision PROD lista",
+        description: `${invoice.serie}-${invoice.numero}: ${status}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "No se pudo emitir CPE (PROD).",
         variant: "destructive",
       });
     } finally {
@@ -504,9 +551,22 @@ const Facturacion = () => {
                       <TableCell><Badge className={badgeClass(x.e as PayStatus)}>{x.e}</Badge></TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <Badge className={cpeBadgeClass(effectiveCpeStatus(x))}>{effectiveCpeStatus(x)}</Badge>
-                          {x.cpeTicket ? <p className="break-all text-xs text-muted-foreground">Ticket: {x.cpeTicket}</p> : null}
-                          {x.cpeError ? <p className="break-words text-xs text-red-600">{x.cpeError}</p> : null}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge className={cpeBadgeClass(effectiveCpeBetaStatus(x))}>BETA: {effectiveCpeBetaStatus(x)}</Badge>
+                            <Badge className={cpeBadgeClass(effectiveCpeStatus(x))}>PROD: {effectiveCpeStatus(x)}</Badge>
+                          </div>
+                          {x.cpeBetaCode || x.cpeBetaDescription ? (
+                            <p className="break-words text-xs text-muted-foreground">
+                              BETA: {x.cpeBetaCode ? `Codigo ${x.cpeBetaCode}. ` : ""}{x.cpeBetaDescription || ""}
+                            </p>
+                          ) : null}
+                          {x.cpeBetaError ? <p className="break-words text-xs text-red-600">BETA: {x.cpeBetaError}</p> : null}
+                          {x.cpeCode || x.cpeDescription ? (
+                            <p className="break-words text-xs text-muted-foreground">
+                              PROD: {x.cpeCode ? `Codigo ${x.cpeCode}. ` : ""}{x.cpeDescription || ""}
+                            </p>
+                          ) : null}
+                          {x.cpeError ? <p className="break-words text-xs text-red-600">PROD: {x.cpeError}</p> : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -520,19 +580,39 @@ const Facturacion = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => emitCpeForInvoice(x)}
+                            onClick={() => validateCpeForInvoice(x)}
                             disabled={!cpeReady || emittingCpeId === x.id}
-                            title={!cpeReady ? cpeBlockReason || "Configura SUNAT para enviar CPE" : undefined}
+                            title={!cpeReady ? cpeBlockReason || "Configura SUNAT para validar CPE" : undefined}
                           >
                             {emittingCpeId === x.id ? (
                               <span className="inline-flex items-center gap-1">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                Enviando
+                                Validando
                               </span>
-                            ) : effectiveCpeStatus(x) === "ACEPTADO" ? (
-                              "Reenviar CPE"
                             ) : (
-                              "Enviar CPE"
+                              "Validar BETA"
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => emitCpeProdForInvoice(x)}
+                            disabled={!cpeReady || effectiveCpeBetaStatus(x) !== "ACEPTADO" || emittingCpeId === x.id}
+                            title={
+                              !cpeReady
+                                ? cpeBlockReason || "Configura SUNAT para emitir CPE"
+                                : effectiveCpeBetaStatus(x) !== "ACEPTADO"
+                                  ? "Primero valida en BETA (debe quedar ACEPTADO)"
+                                  : undefined
+                            }
+                          >
+                            {emittingCpeId === x.id ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Emitiendo
+                              </span>
+                            ) : (
+                              "Emitir PROD"
                             )}
                           </Button>
                         </div>

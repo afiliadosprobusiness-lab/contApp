@@ -41,6 +41,14 @@ export type BillingInvoice = {
   cpeError?: string | null;
   cpeLastAttemptAt?: string | null;
   cpeAcceptedAt?: string | null;
+  cpeBetaStatus?: "ACEPTADO" | "RECHAZADO" | "ERROR" | null;
+  cpeBetaProvider?: string | null;
+  cpeBetaTicket?: string | null;
+  cpeBetaCode?: string | number | null;
+  cpeBetaDescription?: string | null;
+  cpeBetaError?: string | null;
+  cpeBetaLastAttemptAt?: string | null;
+  cpeBetaAcceptedAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -153,4 +161,13 @@ export const emitBillingCpe = (payload: { businessId: string; invoiceId: string 
     result: BillingEmitCpeResult | null;
     invoice: BillingInvoice;
   }>(`/billing/invoices/${encodeURIComponent(invoiceId)}/emit-cpe`, { businessId });
+};
+
+export const emitBillingCpeProd = (payload: { businessId: string; invoiceId: string }) => {
+  const { invoiceId, businessId } = payload;
+  return postWithAuth<{
+    ok: true;
+    result: BillingEmitCpeResult | null;
+    invoice: BillingInvoice;
+  }>(`/billing/invoices/${encodeURIComponent(invoiceId)}/emit-cpe-prod`, { businessId });
 };
