@@ -141,3 +141,18 @@ ContApp Perú es un sistema contable asistido por IA para emprendedores, freelan
 - Para habilitar acciones CPE:
   - datos del emisor en negocio (direccion/ubigeo)
   - certificado digital (.pfx/.p12) + clave guardados en worker
+
+## Actualizacion 2026-02-15 (landing UX)
+
+### Navegacion y enlaces
+- Los links del navbar/footer apuntan a `/#<seccion>` para que funcionen desde cualquier pagina.
+- Se agrega helper `src/components/ScrollToHash.tsx` para hacer scroll suave al navegar con hash.
+
+### Tema (modo claro/oscuro)
+- Se integra `next-themes` en `src/main.tsx` con `attribute="class"` (Tailwind dark mode).
+- Se agrega switch de tema en `src/components/landing/LandingNavbar.tsx`.
+
+### Paginas legales
+- Se agregan rutas:
+  - `GET /legal/privacidad`
+  - `GET /legal/terminos`

@@ -13,10 +13,10 @@ const Index = () => {
       <LandingNavbar />
       <main>
         <HeroSection />
+        <TestimonialsSection />
         <ProblemSection />
         <SolutionSection />
         <PricingSection />
-        <TestimonialsSection />
         <FAQSection />
       </main>
       <LandingFooter />

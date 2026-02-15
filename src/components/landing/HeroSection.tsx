@@ -27,7 +27,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-light text-accent text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-light text-accent dark:bg-accent/15 text-sm font-medium mb-6">
               <Star className="w-4 h-4" />
               +1,000 emprendedores peruanos confían en nosotros
             </div>
