@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Calculator, LayoutDashboard, Building2, FileText, Receipt,
+  Calculator, LayoutDashboard, Building2, FileText, Receipt, ReceiptText,
   CreditCard, Settings, ShieldCheck, ChevronLeft, LogOut,
   Menu, BrainCircuit, ChevronDown, Bell
 } from "lucide-react";
@@ -20,6 +20,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Mis Negocios", icon: Building2, path: "/dashboard/negocios" },
   { label: "Comprobantes", icon: FileText, path: "/dashboard/comprobantes" },
+  { label: "Facturacion", icon: ReceiptText, path: "/dashboard/facturacion" },
   { label: "Impuestos", icon: Receipt, path: "/dashboard/impuestos" },
   { label: "Mi Plan", icon: CreditCard, path: "/dashboard/plan" },
   { label: "Configuración", icon: Settings, path: "/dashboard/configuracion" },

@@ -12,6 +12,12 @@ export interface Business {
   type: string;
   status: BusinessStatus;
   sunatSecondaryUser?: string;
+  // Required to emit CPE directly to SUNAT (issuer address).
+  addressLine1?: string;
+  ubigeo?: string;
+  department?: string;
+  province?: string;
+  district?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -57,6 +63,11 @@ export const BusinessProvider = ({ children }: { children: React.ReactNode }) =>
             type: item.type || "Sin tipo",
             status: (item.status || "ACTIVE") as BusinessStatus,
             sunatSecondaryUser: item.sunatSecondaryUser,
+            addressLine1: item.addressLine1,
+            ubigeo: item.ubigeo,
+            department: item.department,
+            province: item.province,
+            district: item.district,
             createdAt: item.createdAt?.toDate?.(),
             updatedAt: item.updatedAt?.toDate?.(),
           } as Business;

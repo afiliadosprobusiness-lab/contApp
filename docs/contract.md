@@ -133,6 +133,80 @@ Respuestas:
 - `200`: `{ ok: true }` cuando actualiza usuario
 - `500`: `{ error: "Webhook error" | detalle }`
 
+### `POST /billing/invoices` (Bearer Firebase requerido)
+
+Body requerido:
+- `businessId`
+- `documentType` (`FACTURA|BOLETA`)
+- `serie`, `numero`
+- `customerName`, `customerDocumentType`, `customerDocumentNumber`
+- `issueDate`
+- `items[]` (`description`, `quantity`, `unitPrice`, `taxRate`)
+
+Body opcional:
+- `dueDate`
+
+Respuestas:
+- `201`: `{ ok: true, invoice }`
+- `400`: `{ error: "..." }` (validaciones)
+- `401`: auth error
+- `404`: `{ error: "Business not found" }`
+- `409`: `{ error: "Invoice already exists" }`
+
+### `GET /billing/invoices?businessId=...` (Bearer Firebase requerido)
+
+Query opcional:
+- `documentType`
+- `paymentStatus`
+- `limit`
+
+Respuestas:
+- `200`: `{ ok: true, invoices: [] }`
+- `400|401|404`: errores de validacion/auth/negocio
+
+### `GET /billing/invoices/:invoiceId/payments?businessId=...` (Bearer Firebase requerido)
+
+Respuestas:
+- `200`: `{ ok: true, payments: [] }`
+- `400|401|404`: errores de validacion/auth/factura
+
+### `POST /billing/invoices/:invoiceId/payments` (Bearer Firebase requerido)
+
+Body requerido:
+- `businessId`
+- `amount`
+
+Body opcional:
+- `paymentDate`
+- `note`
+
+Respuestas:
+- `200`: `{ ok: true, paymentId, paidAmount, balance, paymentStatus }`
+- `400|401|404`: errores de validacion/auth/factura
+
+### `POST /billing/invoices/:invoiceId/mark-paid` (Bearer Firebase requerido)
+
+Body requerido:
+- `businessId`
+
+Body opcional:
+- `paymentDate`
+- `note`
+
+Respuestas:
+- `200`: `{ ok: true, paymentId|null, paidAmount, balance, paymentStatus }`
+- `400|401|404`: errores de validacion/auth/factura
+
+### `POST /billing/invoices/:invoiceId/emit-cpe` (Bearer Firebase requerido)
+
+Body requerido:
+- `businessId`
+
+Respuestas:
+- `200`: `{ ok: true, result, invoice }`
+- `400|401|404`: errores de validacion/auth/factura
+- `500`: `{ error: "Server error" }`
+
 ## Worker SUNAT (`contapp-pe-sunat-worker`)
 
 ### `GET /health`
@@ -195,6 +269,19 @@ Respuestas:
 - `400`: `{ error: "Missing businessId" }`
 - `401`: auth error
 
+### `POST /sunat/cpe/emit` (Bearer Firebase requerido)
+
+Body requerido:
+
+- `businessId`
+- `invoiceId`
+
+Respuestas:
+
+- `200`: `{ ok: true, result }`
+- `400|401|404`: errores de validacion/auth/negocio
+- `500`: `{ error: "CPE emit failed" }`
+
 ## Endpoints serverless en frontend (`contApp-peru/api/*`)
 
 Codigo observado:
@@ -240,3 +327,67 @@ Comportamientos actuales que el frontend y dashboard consumen:
   - `status: "IDLE"` (string) o
   - `status: { ... }` (objeto)
 - Firestore realtime del frontend depende de los nombres actuales de campos en `users`, `businesses`, `comprobantes` y `sunat_sync`.
+
+## Extensiones de contrato (Frontend Facturacion)
+
+### Ruta UI agregada
+- `GET /dashboard/facturacion` (ruta de frontend, no endpoint HTTP de backend).
+
+### `users/{uid}/businesses/{businessId}/invoices/{invoiceId}`
+
+Campos observados:
+- `documentType` (`FACTURA|BOLETA`)
+- `serie`, `numero`
+- `customerName`, `customerDocumentType`, `customerDocumentNumber`
+- `issueDate`, `dueDate`
+- `subtotal`, `igv`, `total`
+- `paidAmount`, `balance`, `paymentStatus` (`PENDIENTE|PARCIAL|PAGADO|VENCIDO`)
+- `status` (`EMITIDO`)
+- `source` (`BACKEND`)
+- `items[]` (descripcion, cantidad, precio unitario, tasa IGV, subtotal, igv, total)
+- `cpeStatus` (`ACEPTADO|RECHAZADO|ERROR|null`)
+- `cpeProvider`, `cpeTicket`
+- `cpeCode`, `cpeDescription`
+- `cpeError`
+- `cpeLastAttemptAt`, `cpeAcceptedAt`
+- `createdAt`, `updatedAt`
+
+Comportamiento observado:
+- La emision de factura/boleta se registra en `invoices`.
+- Para compatibilidad, tambien se registra una venta en `comprobantes` con `source: FACTURACION_BACKEND`.
+- El frontend consume endpoints backend `billing/*` para emision/cobranza.
+- El envio CPE por comprobante usa `POST /billing/invoices/:invoiceId/emit-cpe`.
+
+## Changelog del Contrato
+- Fecha: 2026-02-15
+- Cambio: Se agrega contrato de la subcoleccion `invoices` y ruta UI de Facturacion.
+- Tipo: non-breaking
+- Impacto: habilita emision y dashboard de ventas/clientes/productos/pendientes sin romper endpoints existentes.
+
+### `users/{uid}/businesses/{businessId}/invoices/{invoiceId}/payments/{paymentId}`
+
+Campos observados:
+- `amount`
+- `paymentDate`
+- `note`
+- `createdAt`
+
+Comportamiento observado:
+- Cada abono crea un documento en `payments`.
+- El documento padre en `invoices` actualiza `paidAmount`, `balance` y `paymentStatus`.
+
+## Changelog del Contrato (continuacion)
+- Fecha: 2026-02-15
+- Cambio: Se agrega contrato de pagos parciales (`payments`) y actualizacion de estado de cobro.
+- Tipo: non-breaking
+- Impacto: habilita seguimiento de abonos y saldo por factura sin cambiar endpoints existentes.
+
+## Changelog del Contrato (integracion backend)
+- Fecha: 2026-02-15
+- Cambio: Frontend de Facturacion pasa a consumir endpoints `billing/*` del backend principal.
+- Tipo: non-breaking
+- Impacto: centraliza validaciones y reglas de cobro en backend sin romper contratos anteriores.
+- Fecha: 2026-02-15
+- Cambio: Se agrega consumo de `POST /billing/invoices/:invoiceId/emit-cpe` y lectura de campos `cpe*` desde `invoices`.
+- Tipo: non-breaking
+- Impacto: habilita visualizacion de estado CPE y reenvio por comprobante en Facturacion.

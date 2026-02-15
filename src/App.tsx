@@ -13,6 +13,7 @@ import DashboardLayout from "./components/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import MisNegocios from "./pages/dashboard/MisNegocios";
 import Comprobantes from "./pages/dashboard/Comprobantes";
+import Facturacion from "./pages/dashboard/Facturacion";
 import Impuestos from "./pages/dashboard/Impuestos";
 import MiPlan from "./pages/dashboard/MiPlan";
 import Configuracion from "./pages/dashboard/Configuracion";
@@ -44,6 +45,7 @@ const App = () => (
                 <Route index element={<DashboardHome />} />
                 <Route path="negocios" element={<MisNegocios />} />
                 <Route path="comprobantes" element={<Comprobantes />} />
+                <Route path="facturacion" element={<Facturacion />} />
                 <Route path="impuestos" element={<Impuestos />} />
                 <Route path="plan" element={<MiPlan />} />
                 <Route path="configuracion" element={<Configuracion />} />

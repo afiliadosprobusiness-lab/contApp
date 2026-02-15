@@ -40,3 +40,19 @@ export const postWithAuth = async <T>(path: string, body: Record<string, unknown
   }
   return data as T;
 };
+
+export const getWithAuth = async <T>(path: string) => {
+  const token = await getAuthToken();
+  const response = await fetch(buildUrl(path), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || "Error en servidor");
+  }
+  return data as T;
+};

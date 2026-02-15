@@ -82,3 +82,25 @@ service cloud.firestore {
 2. Firestore Database > Reglas (pestaña superior)
 3. Reemplaza TODO el contenido con el código de arriba
 4. Haz clic en "Publicar"
+
+## Regla adicional para Facturacion (invoices)
+
+Agrega este bloque dentro de `service cloud.firestore` junto a las otras subcolecciones de negocio:
+
+```javascript
+match /users/{userId}/businesses/{businessId}/invoices/{invoiceId} {
+  allow read, write: if request.auth != null &&
+                        (request.auth.uid == userId || isAdmin());
+}
+```
+
+Sin esta regla, la nueva pantalla `/dashboard/facturacion` no podra leer/escribir facturas.
+
+Para habilitar historial de abonos, agrega tambien:
+
+```javascript
+match /users/{userId}/businesses/{businessId}/invoices/{invoiceId}/payments/{paymentId} {
+  allow read, write: if request.auth != null &&
+                        (request.auth.uid == userId || isAdmin());
+}
+```

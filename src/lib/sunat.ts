@@ -14,6 +14,22 @@ const getAuthToken = async () => {
   return user.getIdToken();
 };
 
+const getJson = async (path: string) => {
+  const token = await getAuthToken();
+  const response = await fetch(`${getApiBase()}${path}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || "Error en servidor SUNAT");
+  }
+  return data;
+};
+
 const postJson = async (path: string, body: Record<string, unknown>) => {
   const token = await getAuthToken();
   const response = await fetch(`${getApiBase()}${path}`, {
@@ -39,6 +55,28 @@ export const saveSunatCredentials = async (payload: {
   solPassword: string;
 }) => {
   return postJson("/sunat/credentials", payload);
+};
+
+export const saveSunatCertificate = async (payload: {
+  businessId: string;
+  filename?: string;
+  pfxBase64: string;
+  pfxPassword: string;
+}) => {
+  return postJson("/sunat/certificate", payload);
+};
+
+export const getSunatCertificateStatus = async (payload: { businessId: string }) => {
+  const query = new URLSearchParams({ businessId: payload.businessId }).toString();
+  return getJson(`/sunat/certificate/status?${query}`) as Promise<{
+    ok: true;
+    configured: boolean;
+    filename?: string | null;
+    sizeBytes?: number | null;
+    sha256?: string | null;
+    updatedAt?: any;
+    createdAt?: any;
+  }>;
 };
 
 export const syncSunat = async (payload: { businessId: string; year: number; month: number }) => {
