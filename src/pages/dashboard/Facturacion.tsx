@@ -20,6 +20,7 @@ import {
   markBillingInvoicePaid,
   registerBillingPayment,
 } from "@/lib/billing";
+import { getSunatCertificateStatus } from "@/lib/sunat";
 
 type DocType = "FACTURA" | "BOLETA";
 type PayStatus = "PENDIENTE" | "PARCIAL" | "PAGADO" | "VENCIDO";
@@ -130,6 +131,10 @@ const Facturacion = () => {
   const [emittingCpeId, setEmittingCpeId] = useState<string | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [certStatus, setCertStatus] = useState<{
+    state: "unknown" | "configured" | "missing";
+    filename?: string | null;
+  }>({ state: "unknown", filename: null });
 
   const loadInvoices = useCallback(async () => {
     if (!user?.uid || !selectedBusiness?.id) {
@@ -208,6 +213,34 @@ const Facturacion = () => {
   useEffect(() => {
     loadInvoices();
   }, [loadInvoices]);
+
+  useEffect(() => {
+    const businessId = selectedBusiness?.id;
+    if (!businessId) {
+      setCertStatus({ state: "unknown", filename: null });
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await getSunatCertificateStatus({ businessId });
+        if (cancelled) return;
+        setCertStatus({
+          state: response.configured ? "configured" : "missing",
+          filename: response.filename ?? null,
+        });
+      } catch {
+        // Don't block sending if we can't verify. We'll still block if issuer data is missing.
+        if (cancelled) return;
+        setCertStatus({ state: "unknown", filename: null });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBusiness?.id]);
 
   useEffect(() => {
     if (!payOpen || !payInvoice?.id || !selectedBusiness?.id) {
@@ -414,6 +447,14 @@ const Facturacion = () => {
     return <Card className="border-dashed border-muted-foreground/30"><CardContent className="flex flex-col gap-3 p-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span>Selecciona o crea un negocio para emitir comprobantes.</span><Button asChild size="sm" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"><Link to="/dashboard/negocios">Ir a Mis Negocios</Link></Button></CardContent></Card>;
   }
 
+  const issuerReady = Boolean(selectedBusiness.addressLine1 && selectedBusiness.ubigeo);
+  const cpeReady = issuerReady && certStatus.state !== "missing";
+  const cpeBlockReason = !issuerReady
+    ? "Faltan datos del emisor (direccion/ubigeo). Configuralos en Configuracion."
+    : certStatus.state === "missing"
+      ? "Falta el certificado digital (.pfx/.p12). Configuralo en Configuracion."
+      : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -427,7 +468,16 @@ const Facturacion = () => {
         </div>
       </div>
 
-      <Card className="border-emerald-200 bg-emerald-50/70"><CardContent className="p-4 text-sm text-emerald-900">La emision, cobranza y envio CPE usan API backend + worker SUNAT. Puedes emitir o reenviar CPE por comprobante.</CardContent></Card>
+      <Card className="border-emerald-200 bg-emerald-50/70">
+        <CardContent className="space-y-2 p-4 text-sm text-emerald-900">
+          <p>La emision, cobranza y envio CPE usan API backend + worker SUNAT. Puedes emitir o reenviar CPE por comprobante.</p>
+          {!cpeReady ? (
+            <p className="text-amber-900">
+              Para enviar CPE: {cpeBlockReason} {certStatus.filename ? `Certificado actual: ${certStatus.filename}.` : ""}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="shadow-card border-border"><CardContent className="p-5"><p className="text-sm text-muted-foreground">Ventas del mes</p><p className="font-display text-2xl font-bold text-foreground">{f(dashboard.sales)}</p></CardContent></Card>
@@ -459,7 +509,34 @@ const Facturacion = () => {
                           {x.cpeError ? <p className="break-words text-xs text-red-600">{x.cpeError}</p> : null}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right"><div className="flex flex-wrap justify-end gap-2"><Button size="sm" variant="outline" onClick={() => { setPayInvoice(x); setPayForm(emptyPay()); setPayOpen(true); }}>Registrar abono</Button><Button size="sm" variant="outline" onClick={() => markPaid(x)}>Pagar total</Button><Button size="sm" variant="outline" onClick={() => emitCpeForInvoice(x)} disabled={emittingCpeId === x.id}>{emittingCpeId === x.id ? <span className="inline-flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin" />Enviando</span> : effectiveCpeStatus(x) === "ACEPTADO" ? "Reenviar CPE" : "Enviar CPE"}</Button></div></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setPayInvoice(x); setPayForm(emptyPay()); setPayOpen(true); }}>
+                            Registrar abono
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => markPaid(x)}>
+                            Pagar total
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => emitCpeForInvoice(x)}
+                            disabled={!cpeReady || emittingCpeId === x.id}
+                            title={!cpeReady ? cpeBlockReason || "Configura SUNAT para enviar CPE" : undefined}
+                          >
+                            {emittingCpeId === x.id ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Enviando
+                              </span>
+                            ) : effectiveCpeStatus(x) === "ACEPTADO" ? (
+                              "Reenviar CPE"
+                            ) : (
+                              "Enviar CPE"
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
