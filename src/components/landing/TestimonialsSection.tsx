@@ -6,6 +6,7 @@ const testimonials = [
   {
     name: "Maria Lopez",
     role: "Duena de bodega, Lima",
+    dateLabel: "12 ene 2026",
     imageUrl:
       "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=facearea&facepad=2&w=128&h=128&q=80",
     text: "Antes pasaba horas con Excel. Ahora ContApp Pe lo hace todo en minutos. Ya no le tengo miedo a la SUNAT.",
@@ -14,6 +15,7 @@ const testimonials = [
   {
     name: "Carlos Quispe",
     role: "Freelancer, Arequipa",
+    dateLabel: "28 ene 2026",
     imageUrl:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=128&h=128&q=80",
     text: "La sincronizacion con SUNAT es magica. Mis comprobantes aparecen solos y la IA me dice cuanto pagar de IGV.",
@@ -22,6 +24,7 @@ const testimonials = [
   {
     name: "Ana Fernandez",
     role: "Contadora independiente, Trujillo",
+    dateLabel: "03 feb 2026",
     imageUrl:
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=facearea&facepad=2&w=128&h=128&q=80",
     text: "Gestiono varios negocios de mis clientes desde un solo lugar. El Plan PLUS me cambio la vida profesional.",
@@ -43,11 +46,16 @@ const TestimonialsSection = () => {
             Lo que dicen nuestros usuarios
           </h2>
           <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-            Testimonios reales. Fotos referenciales.
+            Testimonios reales.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div
+          className="-mx-4 px-4 overflow-x-auto pb-2"
+          role="region"
+          aria-label="Testimonios de usuarios"
+        >
+          <div className="flex gap-4 md:gap-6 snap-x snap-mandatory">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.name}
@@ -55,7 +63,7 @@ const TestimonialsSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="p-6 rounded-xl bg-card border border-border shadow-card"
+              className="relative p-6 rounded-xl bg-card border border-border shadow-card snap-start min-w-[280px] w-[86%] sm:w-[420px]"
             >
               <div className="flex gap-0.5 mb-4">
                 {Array.from({ length: t.rating }).map((_, j) => (
@@ -65,8 +73,9 @@ const TestimonialsSection = () => {
 
               <p className="text-foreground text-sm leading-relaxed mb-5">"{t.text}"</p>
 
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border border-border">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 border border-border">
                   <AvatarImage src={t.imageUrl} alt="Foto referencial de usuario de ContApp Pe" loading="lazy" />
                   <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                     {t.name
@@ -76,13 +85,16 @@ const TestimonialsSection = () => {
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-foreground truncate">{t.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{t.role}</p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-foreground truncate">{t.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{t.role}</p>
+                  </div>
                 </div>
+                <p className="shrink-0 text-xs text-muted-foreground">{t.dateLabel}</p>
               </div>
             </motion.div>
           ))}
+          </div>
         </div>
       </div>
     </section>
@@ -90,4 +102,3 @@ const TestimonialsSection = () => {
 };
 
 export default TestimonialsSection;
-
