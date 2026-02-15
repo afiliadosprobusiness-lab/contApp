@@ -128,3 +128,16 @@ ContApp Perú es un sistema contable asistido por IA para emprendedores, freelan
 - `cpeCode`, `cpeDescription`
 - `cpeError`
 - `cpeLastAttemptAt`, `cpeAcceptedAt`
+
+## Actualizacion 2026-02-15 (fase 5 CPE BETA->PROD)
+
+### Validacion y emision separadas
+- La pantalla `/dashboard/facturacion` separa:
+  - `Validar BETA`: valida envio a SUNAT pruebas y guarda `cpeBeta*`
+  - `Emitir PROD`: emite en SUNAT real (requiere `BETA=ACEPTADO`)
+- Si `PROD=ACEPTADO`, la accion cambia a `Ver CDR` (descarga ZIP).
+
+### Configuracion requerida
+- Para habilitar acciones CPE:
+  - datos del emisor en negocio (direccion/ubigeo)
+  - certificado digital (.pfx/.p12) + clave guardados en worker

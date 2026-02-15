@@ -207,6 +207,26 @@ Respuestas:
 - `400|401|404`: errores de validacion/auth/factura
 - `500`: `{ error: "Server error" }`
 
+Notas:
+- Usado como **validacion BETA**.
+
+### `POST /billing/invoices/:invoiceId/emit-cpe-prod` (Bearer Firebase requerido)
+
+Body requerido:
+- `businessId`
+
+Respuestas:
+- `200`: `{ ok: true, result, invoice }`
+- `400|401|404`: errores de validacion/auth/factura
+- `500`: `{ error: "Server error" }`
+
+### `GET /billing/invoices/:invoiceId/cdr?businessId=...&env=PROD|BETA` (Bearer Firebase requerido)
+
+Respuestas:
+- `200`: `{ ok: true, filename, zipBase64 }`
+- `400|401|404`: errores de validacion/auth/factura
+- `500`: `{ error: "Server error" }`
+
 ## Worker SUNAT (`contapp-pe-sunat-worker`)
 
 ### `GET /health`
@@ -346,6 +366,7 @@ Campos observados:
 - `source` (`BACKEND`)
 - `items[]` (descripcion, cantidad, precio unitario, tasa IGV, subtotal, igv, total)
 - `cpeStatus` (`ACEPTADO|RECHAZADO|ERROR|null`)
+- `cpeBetaStatus` (`ACEPTADO|RECHAZADO|ERROR|null`)
 - `cpeProvider`, `cpeTicket`
 - `cpeCode`, `cpeDescription`
 - `cpeError`
@@ -391,3 +412,7 @@ Comportamiento observado:
 - Cambio: Se agrega consumo de `POST /billing/invoices/:invoiceId/emit-cpe` y lectura de campos `cpe*` desde `invoices`.
 - Tipo: non-breaking
 - Impacto: habilita visualizacion de estado CPE y reenvio por comprobante en Facturacion.
+- Fecha: 2026-02-15
+- Cambio: Se agrega flujo BETA->PROD (`emit-cpe-prod`), lectura `cpeBeta*` y descarga de CDR (`GET /billing/invoices/:invoiceId/cdr`).
+- Tipo: non-breaking
+- Impacto: habilita validacion previa en BETA y emision real en PROD con descarga del CDR.
